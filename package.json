@@ -1,0 +1,26 @@
+{
+  "name": "aigc",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview --port 5180"
+  },
+  "dependencies": {
+    "@mlc-ai/web-llm": "0.2.74",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^5.0.0",
+    "eslint": "^9.13.0",
+    "eslint-plugin-react-hooks": "^5.1.0-rc.0",
+    "eslint-plugin-react-refresh": "^0.4.12",
+    "typescript": "^5.6.3",
+    "vite": "^6.3.6"
+  }
+}

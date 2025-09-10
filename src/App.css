@@ -1,0 +1,126 @@
+/* iPhone 15 配色主题 + 护眼风格 */
+:root {
+  --radius: 12px;
+  --shadow: 0 10px 30px rgba(0,0,0,0.06);
+  --text: #0f172a;
+  --text-muted: #475569;
+  --card: #ffffff;
+  --border: rgba(15, 23, 42, 0.08);
+}
+
+/* 主题色板（取 iPhone 15 五色，做成柔和渐变+浅底） */
+.theme-blue {
+  --bg: #eef4ff;                  /* 浅蓝底 */
+  --bg-soft: linear-gradient(180deg, #eef4ff 0%, #e9f1ff 100%);
+  --primary: #3b82f6;             /* 蓝 */
+  --primary-600: #2563eb;
+  --bubble-user: #e6f0ff;
+  --bubble-ai: #ffffff;
+}
+.theme-pink {
+  --bg: #fff1f5;                  /* 浅粉底 */
+  --bg-soft: linear-gradient(180deg, #fff1f5 0%, #ffe7f0 100%);
+  --primary: #ec4899;
+  --primary-600: #db2777;
+  --bubble-user: #ffe6f3;
+  --bubble-ai: #ffffff;
+}
+.theme-green {
+  --bg: #ecfdf5;                  /* 浅绿底 */
+  --bg-soft: linear-gradient(180deg, #ecfdf5 0%, #e6fbf0 100%);
+  --primary: #10b981;
+  --primary-600: #059669;
+  --bubble-user: #dff8ef;
+  --bubble-ai: #ffffff;
+}
+.theme-yellow {
+  --bg: #fffbeb;                  /* 浅黄底 */
+  --bg-soft: linear-gradient(180deg, #fffbeb 0%, #fff4d8 100%);
+  --primary: #f59e0b;
+  --primary-600: #d97706;
+  --bubble-user: #fff1cf;
+  --bubble-ai: #ffffff;
+}
+.theme-black {
+  --bg: #0b1220;                  /* 深色 */
+  --bg-soft: linear-gradient(180deg, #0b1220 0%, #111827 100%);
+  --primary: #60a5fa;
+  --primary-600: #3b82f6;
+  --bubble-user: #111827;
+  --bubble-ai: #0f172a;
+  --text: #e5e7eb;
+  --text-muted: #94a3b8;
+  --card: #0b1220;
+  --border: rgba(148,163,184,0.2);
+}
+
+* { box-sizing: border-box; }
+html, body, #root { height: 100%; }
+body {
+  margin: 0;
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans";
+  color: var(--text);
+  background: var(--bg);
+}
+
+.app { height: 100%; display: grid; grid-template-rows: auto 1fr auto; }
+
+.header {
+  position: sticky; top: 0; z-index: 10;
+  background: var(--bg-soft);
+  border-bottom: 1px solid var(--border);
+}
+.header h1 { margin: 0; padding: 14px 20px; font-size: 16px; font-weight: 600; }
+
+.settings { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 10px 16px 14px; border-top: 1px solid var(--border); }
+.settings input, .settings select, .composer textarea {
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  outline: none;
+  transition: border 120ms ease, box-shadow 120ms ease;
+}
+.settings input:focus, .settings select:focus, .composer textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary) 20%, transparent); }
+.settings .select { display: inline-flex; gap: 8px; align-items: center; }
+.settings .stream { display: inline-flex; gap: 6px; align-items: center; color: var(--text-muted); }
+.settings .progress { font-size: 12px; color: var(--text-muted); }
+.settings .badge { font-size: 12px; padding: 2px 8px; border-radius: 999px; background: color-mix(in oklab, var(--primary) 10%, transparent); border: 1px solid var(--border); }
+.settings button { margin-left: auto; padding: 10px 14px; border-radius: var(--radius); border: 1px solid var(--primary); color: white; background: var(--primary); cursor: pointer; box-shadow: var(--shadow); }
+.settings button:hover { background: var(--primary-600); }
+
+/* 调整聊天列表高度，充分利用垂直空间；移除过大的上下边距，降低空白感 */
+.chat { padding: 8px; }
+.list {
+  height: calc(100vh - 180px); /* 原 210px -> 180px，给消息更多空间 */
+  overflow: auto;
+  padding: 12px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: color-mix(in oklab, var(--bg) 75%, white 25%);
+  box-shadow: var(--shadow);
+}
+
+/* 在深色主题下，让容器真正使用全黑基底，减少灰阶泡影，进一步“暗黑” */
+.theme-black .list { background: #0d1117; border-color: rgba(148,163,184,0.14); }
+.theme-black .msg .role { background: #0f172a; border-color: rgba(148,163,184,0.16); }
+.theme-black .msg .bubble { background: #0e1624; border-color: rgba(148,163,184,0.16); }
+.theme-black .msg.user .bubble { background: #101826; }
+
+.msg { display: grid; grid-template-columns: 44px 1fr; gap: 8px; margin-bottom: 12px; }
+.msg .role { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; font-weight: 600; color: var(--primary); background: color-mix(in oklab, var(--primary) 10%, white 90%); border: 1px solid var(--border); }
+.msg .bubble { padding: 12px 14px; border-radius: 14px; border: 1px solid var(--border); background: var(--bubble-ai); }
+.msg.user .bubble { background: var(--bubble-user); }
+
+.loading { text-align: center; color: var(--text-muted); padding: 8px 0 2px; font-size: 14px; }
+
+.composer { display: grid; grid-template-columns: 1fr auto; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--border); background: var(--bg-soft); }
+.composer textarea { min-height: 60px; max-height: 160px; resize: vertical; line-height: 1.4; }
+.composer button { padding: 10px 16px; border-radius: var(--radius); border: 1px solid var(--primary); color: white; background: var(--primary); cursor: pointer; box-shadow: var(--shadow); }
+.composer button:disabled { opacity: 0.6; cursor: not-allowed; }
+
+@media (max-width: 640px) {
+  .settings { gap: 6px; }
+  .list { height: calc(100vh - 260px); }
+}

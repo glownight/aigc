@@ -1,0 +1,30 @@
+/* Reset Vite template defaults that cause centering and extra blank area */
+:root {
+  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  /* keep color-scheme hint minimal; real colors are defined in App.css themes */
+  color-scheme: dark light;
+}
+
+a { text-decoration: inherit; }
+a:hover { opacity: 0.9; }
+
+/* Fill the viewport; do not center the root container */
+html, body, #root { height: 100%; width: 100%; }
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  display: block; /* remove flex + place-items center from Vite template */
+}
+
+/* Keep some sensible defaults, but let App.css drive the look */
+h1 { font-size: 1em; line-height: 1.1; margin: 0; }
+button { font-family: inherit; cursor: pointer; }
+button:focus, button:focus-visible { outline: 2px auto -webkit-focus-ring-color; }
+
+@media (prefers-color-scheme: light) {
+  /* no override here; themes in App.css manage colors */
+}
