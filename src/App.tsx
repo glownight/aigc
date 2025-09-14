@@ -17,6 +17,20 @@ export type Role = "user" | "assistant" | "system";
 export type Message = { id: string; role: Role; content: string };
 export type EngineMode = "remote" | "browser";
 
+// 会话相关类型
+export type Session = {
+  id: string;
+  title: string;
+  messages: Message[];
+  createdAt: number;
+  updatedAt: number;
+};
+
+export type SessionManager = {
+  sessions: Session[];
+  currentSessionId: string;
+};
+
 const uid = () => Math.random().toString(36).slice(2);
 
 function useLocalStorage<T>(key: string, initial: T) {
@@ -41,7 +55,42 @@ function App() {
   ]);
   const [input, setInput] = useState("");
 
-  // 强制仅使用“浏览器小模型”
+  // 会话管理
+  const [sessionManager, setSessionManager] = useLocalStorage<SessionManager>(
+    "aigc.sessions",
+    {
+      sessions: [],
+      currentSessionId: ""
+    }
+  );
+
+  // 初始化默认会话
+  useEffect(() => {
+    if (sessionManager.sessions.length === 0) {
+      const defaultSession: Session = {
+        id: uid(),
+        title: "新对话",
+        messages: [
+          { id: uid(), role: "system", content: "你是一个有帮助的智能助手。" },
+          { id: uid(), role: "assistant", content: "你好，我可以为你提供智能问答服务～" }
+        ],
+        createdAt: Date.now(),
+        updatedAt: Date.now()
+      };
+      setSessionManager({
+        sessions: [defaultSession],
+        currentSessionId: defaultSession.id
+      });
+    }
+  }, []);
+
+  // 获取当前会话
+  const currentSession = sessionManager.sessions.find(s => s.id === sessionManager.currentSessionId);
+  
+  // 使用当前会话的消息，如果没有当前会话则使用默认消息
+  const sessionMessages = currentSession?.messages || messages;
+
+  // 强制仅使用"浏览器小模型"
   const [engine, setEngine] = useLocalStorage<EngineMode>(
     "aigc.engine",
     "browser"
@@ -79,6 +128,73 @@ function App() {
   );
 
   const engineRef = useRef<any | null>(null);
+
+  // 会话操作函数
+  const createNewSession = () => {
+    const newSession: Session = {
+      id: uid(),
+      title: "新对话",
+      messages: [
+        { id: uid(), role: "system", content: "你是一个有帮助的智能助手。" },
+        { id: uid(), role: "assistant", content: "你好，我可以为你提供智能问答服务～" }
+      ],
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
+    setSessionManager(prev => ({
+      sessions: [newSession, ...prev.sessions],
+      currentSessionId: newSession.id
+    }));
+  };
+
+  const switchSession = (sessionId: string) => {
+    setSessionManager(prev => ({
+      ...prev,
+      currentSessionId: sessionId
+    }));
+  };
+
+  const deleteSession = (sessionId: string) => {
+    setSessionManager(prev => {
+      const newSessions = prev.sessions.filter(s => s.id !== sessionId);
+      let newCurrentId = prev.currentSessionId;
+      
+      // 如果删除的是当前会话，切换到第一个会话
+      if (sessionId === prev.currentSessionId && newSessions.length > 0) {
+        newCurrentId = newSessions[0].id;
+      }
+      
+      return {
+        sessions: newSessions,
+        currentSessionId: newCurrentId
+      };
+    });
+  };
+
+  const updateCurrentSession = (messages: Message[]) => {
+    if (!currentSession) return;
+    
+    // 自动生成会话标题（基于第一条用户消息）
+    let newTitle = currentSession.title;
+    const userMessages = messages.filter(m => m.role === "user");
+    if (userMessages.length === 1 && currentSession.title === "新对话") {
+      const firstUserMessage = userMessages[0].content;
+      // 取前20个字符作为标题，去掉换行符
+      newTitle = firstUserMessage.replace(/\n/g, " ").slice(0, 20);
+      if (firstUserMessage.length > 20) {
+        newTitle += "...";
+      }
+    }
+    
+    setSessionManager(prev => ({
+      ...prev,
+      sessions: prev.sessions.map(s => 
+        s.id === currentSession.id 
+          ? { ...s, messages, updatedAt: Date.now(), title: newTitle }
+          : s
+      )
+    }));
+  };
   const [engineReady, setEngineReady] = useState(false);
   const [progressText, setProgressText] = useState("");
 
@@ -86,6 +202,7 @@ function App() {
   const listRef = useRef<HTMLDivElement>(null);
   // Kimi风格：设置弹窗与建议卡片
   const [showSettings, setShowSettings] = useState(false);
+  const [showSidebar, setShowSidebar] = useState(false);
   const suggestions = useMemo(
     () => [
       "介绍一下你自己",
@@ -113,7 +230,7 @@ function App() {
       top: listRef.current.scrollHeight,
       behavior: "smooth",
     });
-  }, [messages, loading]);
+  }, [sessionMessages, loading]);
 
   // 迁移兼容：老版本小写模型 ID 更正为官方大小写
   useEffect(() => {
@@ -265,12 +382,13 @@ function App() {
     const text = overrideText ?? input;
     if (!(text.trim().length > 0) || loading) return;
     const userMsg: Message = { id: uid(), role: "user", content: text.trim() };
-    setMessages((m) => [...m, userMsg]);
+    const newMessages = [...sessionMessages, userMsg];
+    updateCurrentSession(newMessages);
     setInput("");
 
     try {
       setLoading(true);
-      const sendMessages = messages
+      const sendMessages = sessionMessages
         .concat(userMsg)
         .map(({ role, content }) => ({ role, content }));
 
@@ -285,26 +403,24 @@ function App() {
         const data = await resp.json();
         const content: string =
           data?.choices?.[0]?.message?.content || data?.content || "";
-        setMessages((m) => [...m, { id: uid(), role: "assistant", content }]);
+        const assistantMsg = { id: uid(), role: "assistant", content };
+        updateCurrentSession([...newMessages, assistantMsg]);
       } else {
         if (!engineReady || !engineRef.current) {
-          setMessages((m) => [
-            ...m,
-            {
-              id: uid(),
-              role: "assistant",
-              content: "本地模型初始化中，请稍候…",
-            },
-          ]);
+          const waitingMsg = {
+            id: uid(),
+            role: "assistant",
+            content: "本地模型初始化中，请稍候…",
+          };
+          updateCurrentSession([...newMessages, waitingMsg]);
           return;
         }
         const eng = engineRef.current;
         if (stream) {
           const assistantId = uid();
-          setMessages((m) => [
-            ...m,
-            { id: assistantId, role: "assistant", content: "" },
-          ]);
+          let currentMessages = [...newMessages, { id: assistantId, role: "assistant", content: "" }];
+          updateCurrentSession(currentMessages);
+          
           const streamResp = await eng.chat.completions.create({
             messages: sendMessages,
             stream: true,
@@ -312,13 +428,12 @@ function App() {
           for await (const chunk of streamResp) {
             const delta: string = chunk?.choices?.[0]?.delta?.content || "";
             if (delta) {
-              setMessages((prev) =>
-                prev.map((mm) =>
-                  mm.id === assistantId
-                    ? { ...mm, content: mm.content + delta }
-                    : mm
-                )
+              currentMessages = currentMessages.map((mm) =>
+                mm.id === assistantId
+                  ? { ...mm, content: mm.content + delta }
+                  : mm
               );
+              updateCurrentSession(currentMessages);
             }
           }
         } else {
@@ -326,38 +441,40 @@ function App() {
             messages: sendMessages,
           });
           const content: string = out?.choices?.[0]?.message?.content ?? "";
-          setMessages((m) => [...m, { id: uid(), role: "assistant", content }]);
+          const assistantMsg = { id: uid(), role: "assistant", content };
+          updateCurrentSession([...newMessages, assistantMsg]);
         }
       }
     } catch (e: any) {
-      setMessages((m) => [
-        ...m,
-        {
-          id: uid(),
-          role: "assistant",
-          content: `请求出错：${e?.message || e}`,
-        },
-      ]);
+      const errorMsg = {
+        id: uid(),
+        role: "assistant",
+        content: `请求出错：${e?.message || e}`,
+      };
+      updateCurrentSession([...newMessages, errorMsg]);
     } finally {
       setLoading(false);
     }
   }
 
   function handleClear() {
-    setMessages([
-      { id: uid(), role: "system", content: "你是一个有帮助的智能助手。" },
-    ]);
+    createNewSession();
   }
 
   return (
     <div className={`app theme-${theme}`}>
       <header className="header">
+        <div className="topbar-left">
+          <button className="btn ghost" onClick={() => setShowSidebar(!showSidebar)}>
+            ☰
+          </button>
+        </div>
         <div className="topbar-right">
           <div className="status-mini">
             <span className="progress-text">{progressText}</span>
             <span className="ready-dot" data-ready={engineReady}></span>
             <span className="engine-indicator">
-              {engine === "browser" ? "本地小模型" : "云端API"}
+              {engine === "browser" ? "浏览器模型" : "云端API"}
             </span>
           </div>
           <button className="btn ghost" onClick={() => setShowSettings(true)}>
@@ -369,8 +486,52 @@ function App() {
         </div>
       </header>
 
+      {/* 会话列表侧边栏 */}
+      {showSidebar && (
+        <div className="sidebar-backdrop" onClick={() => setShowSidebar(false)}>
+          <div className="sidebar" onClick={(e) => e.stopPropagation()}>
+            <div className="sidebar-header">
+              <h3>历史会话</h3>
+              <button className="btn ghost" onClick={createNewSession}>
+                + 新建
+              </button>
+            </div>
+            <div className="session-list">
+              {sessionManager.sessions.map((session) => (
+                <div
+                  key={session.id}
+                  className={`session-item ${
+                    session.id === sessionManager.currentSessionId ? "active" : ""
+                  }`}
+                  onClick={() => {
+                    switchSession(session.id);
+                    setShowSidebar(false);
+                  }}
+                >
+                  <div className="session-title">{session.title}</div>
+                  <div className="session-time">
+                    {new Date(session.updatedAt).toLocaleDateString()}
+                  </div>
+                  <button
+                    className="session-delete"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (sessionManager.sessions.length > 1) {
+                        deleteSession(session.id);
+                      }
+                    }}
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       <main className="chat">
-        {messages.filter((m) => m.role === "user").length === 0 && (
+        {sessionMessages.filter((m) => m.role === "user").length === 0 && (
           <div className="suggestions">
             {suggestions.map((s) => (
               <button
@@ -384,7 +545,7 @@ function App() {
           </div>
         )}
         <div className="list" ref={listRef}>
-          {messages
+          {sessionMessages
             .filter((m) => m.role !== "system")
             .map((m) => (
               <div key={m.id} className={`msg ${m.role}`}>
@@ -435,7 +596,7 @@ function App() {
                   value={engine}
                   onChange={(e) => setEngine(e.target.value as EngineMode)}
                 >
-                  <option value="browser">本地小模型</option>
+                  <option value="browser">浏览器模型</option>
                   <option value="remote">云端API</option>
                 </select>
               </div>
@@ -457,13 +618,13 @@ function App() {
               {engine === "browser" && (
                 <>
                   <div className="field">
-                    <label>本地模型</label>
+                    <label>浏览器模型</label>
                     <select
                       value={browserModel}
                       onChange={(e) => setBrowserModel(e.target.value)}
                     >
                       <option value="Qwen2.5-0.5B-Instruct-q4f32_1-MLC">
-                        Qwen2.5-0.5B (推荐)
+                        Qwen2.5-0.5B (浏览器内运行)
                       </option>
                     </select>
                   </div>
