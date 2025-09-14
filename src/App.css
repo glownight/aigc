@@ -564,6 +564,34 @@ button:focus-visible {
   color: var(--text);
 }
 
+.sidebar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.sidebar-actions .btn {
+  padding: 6px 12px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.sidebar-actions .btn.danger {
+  background: #FF3B30;
+  color: white;
+  border: none;
+}
+
+.sidebar-actions .btn.danger:hover {
+  background: #D70015;
+}
+
+.sidebar-actions .btn.danger:disabled {
+  background: #8E8E93;
+  cursor: not-allowed;
+}
+
 .session-list {
   flex: 1;
   overflow-y: auto;
@@ -578,6 +606,34 @@ button:focus-visible {
   transition: all 0.2s ease;
   position: relative;
   border: 1px solid transparent;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.session-item.batch-mode {
+  padding-left: 12px;
+}
+
+.session-checkbox {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.session-checkbox input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  border: 2px solid var(--border);
+  background: transparent;
+  cursor: pointer;
+  accent-color: var(--primary);
+}
+
+.session-content {
+  flex: 1;
+  min-width: 0;
 }
 
 .session-item:hover {

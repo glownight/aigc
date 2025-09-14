@@ -236,6 +236,9 @@ function App() {
   // Kimi风格：设置弹窗与建议卡片
   const [showSettings, setShowSettings] = useState(false);
   const [showSidebar, setShowSidebar] = useState(false);
+  // 批量删除功能状态
+  const [batchDeleteMode, setBatchDeleteMode] = useState(false);
+  const [selectedSessions, setSelectedSessions] = useState<Set<string>>(new Set());
   const suggestions = useMemo(
     () => [
       "介绍一下你自己",
@@ -403,6 +406,79 @@ function App() {
     }
   }
 
+  // 批量删除相关函数
+  function toggleBatchDeleteMode() {
+    setBatchDeleteMode(!batchDeleteMode);
+    setSelectedSessions(new Set()); // 清空选中列表
+  }
+
+  function toggleSessionSelection(sessionId: string) {
+    const newSelected = new Set(selectedSessions);
+    if (newSelected.has(sessionId)) {
+      newSelected.delete(sessionId);
+    } else {
+      newSelected.add(sessionId);
+    }
+    setSelectedSessions(newSelected);
+  }
+
+  function selectAllSessions() {
+    const allSessionIds = new Set(sessionManager.sessions.map(s => s.id));
+    setSelectedSessions(allSessionIds);
+  }
+
+  function deselectAllSessions() {
+    setSelectedSessions(new Set());
+  }
+
+  function handleBatchDelete() {
+    if (selectedSessions.size === 0) return;
+    
+    const sessionsToKeep = sessionManager.sessions.filter(
+      s => !selectedSessions.has(s.id)
+    );
+    
+    // 如果删除后没有会话了，创建一个新的
+    if (sessionsToKeep.length === 0) {
+      const newSession: Session = {
+        id: uid(),
+        title: "新对话",
+        messages: [
+          { id: uid(), role: "system", content: "你是一个有帮助的智能助手。" },
+          {
+            id: uid(),
+            role: "assistant",
+            content: "你好，我可以为你提供智能问答服务～",
+          },
+        ],
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      };
+      setSessionManager({
+        sessions: [newSession],
+        currentSessionId: newSession.id,
+      });
+      navigate(`/chat/${newSession.id}`);
+    } else {
+      // 如果当前会话被删除，切换到第一个剩余的会话
+      const currentSessionDeleted = selectedSessions.has(sessionManager.currentSessionId);
+      const newCurrentId = currentSessionDeleted ? sessionsToKeep[0].id : sessionManager.currentSessionId;
+      
+      setSessionManager({
+        sessions: sessionsToKeep,
+        currentSessionId: newCurrentId,
+      });
+      
+      if (currentSessionDeleted) {
+        navigate(`/chat/${newCurrentId}`);
+      }
+    }
+    
+    // 重置批量删除模式
+    setBatchDeleteMode(false);
+    setSelectedSessions(new Set());
+  }
+
   function handleClear() {
     createNewSession();
   }
@@ -439,9 +515,37 @@ function App() {
           <div className="sidebar" onClick={(e) => e.stopPropagation()}>
             <div className="sidebar-header">
               <h3>历史会话</h3>
-              <button className="btn ghost" onClick={createNewSession}>
-                + 新建
-              </button>
+              <div className="sidebar-actions">
+                {!batchDeleteMode ? (
+                  <>
+                    <button className="btn ghost" onClick={toggleBatchDeleteMode}>
+                      批量删除
+                    </button>
+                    <button className="btn ghost" onClick={createNewSession}>
+                      + 新建
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button 
+                      className="btn ghost" 
+                      onClick={selectedSessions.size === sessionManager.sessions.length ? deselectAllSessions : selectAllSessions}
+                    >
+                      {selectedSessions.size === sessionManager.sessions.length ? '取消全选' : '全选'}
+                    </button>
+                    <button 
+                      className="btn danger" 
+                      onClick={handleBatchDelete}
+                      disabled={selectedSessions.size === 0}
+                    >
+                      删除({selectedSessions.size})
+                    </button>
+                    <button className="btn ghost" onClick={toggleBatchDeleteMode}>
+                      取消
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
             <div className="session-list">
               {sessionManager.sessions.map((session) => (
@@ -451,26 +555,46 @@ function App() {
                     session.id === (sessionId || sessionManager.currentSessionId)
                       ? "active"
                       : ""
+                  } ${
+                    batchDeleteMode ? "batch-mode" : ""
                   }`}
                   onClick={() => {
-                    switchSession(session.id);
+                    if (batchDeleteMode) {
+                      toggleSessionSelection(session.id);
+                    } else {
+                      switchSession(session.id);
+                    }
                   }}
                 >
-                  <div className="session-title">{session.title}</div>
-                  <div className="session-time">
-                    {new Date(session.updatedAt).toLocaleDateString()}
+                  {batchDeleteMode && (
+                    <div className="session-checkbox">
+                      <input
+                        type="checkbox"
+                        checked={selectedSessions.has(session.id)}
+                        onChange={() => toggleSessionSelection(session.id)}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    </div>
+                  )}
+                  <div className="session-content">
+                    <div className="session-title">{session.title}</div>
+                    <div className="session-time">
+                      {new Date(session.updatedAt).toLocaleDateString()}
+                    </div>
                   </div>
-                  <button
-                    className="session-delete"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (sessionManager.sessions.length > 1) {
-                        deleteSession(session.id);
-                      }
-                    }}
-                  >
-                    ×
-                  </button>
+                  {!batchDeleteMode && (
+                    <button
+                      className="session-delete"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (sessionManager.sessions.length > 1) {
+                          deleteSession(session.id);
+                        }
+                      }}
+                    >
+                      ×
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
