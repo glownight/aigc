@@ -15,7 +15,7 @@ import "./App.css";
 
 export type Role = "user" | "assistant" | "system";
 export type Message = { id: string; role: Role; content: string };
-export type EngineMode = "remote" | "browser";
+export type EngineMode = "browser";
 
 // 会话相关类型
 export type Session = {
@@ -60,7 +60,7 @@ function App() {
     "aigc.sessions",
     {
       sessions: [],
-      currentSessionId: ""
+      currentSessionId: "",
     }
   );
 
@@ -72,21 +72,27 @@ function App() {
         title: "新对话",
         messages: [
           { id: uid(), role: "system", content: "你是一个有帮助的智能助手。" },
-          { id: uid(), role: "assistant", content: "你好，我可以为你提供智能问答服务～" }
+          {
+            id: uid(),
+            role: "assistant",
+            content: "你好，我可以为你提供智能问答服务～",
+          },
         ],
         createdAt: Date.now(),
-        updatedAt: Date.now()
+        updatedAt: Date.now(),
       };
       setSessionManager({
         sessions: [defaultSession],
-        currentSessionId: defaultSession.id
+        currentSessionId: defaultSession.id,
       });
     }
   }, []);
 
   // 获取当前会话
-  const currentSession = sessionManager.sessions.find(s => s.id === sessionManager.currentSessionId);
-  
+  const currentSession = sessionManager.sessions.find(
+    (s) => s.id === sessionManager.currentSessionId
+  );
+
   // 使用当前会话的消息，如果没有当前会话则使用默认消息
   const sessionMessages = currentSession?.messages || messages;
 
@@ -105,26 +111,10 @@ function App() {
   // const [apiBase] = useLocalStorage('aigc.apiBase', 'https://api.openai.com')
   // const [apiKey] = useLocalStorage('aigc.apiKey', '')
   // const [model] = useLocalStorage('aigc.model', 'gpt-3.5-turbo')
-  const [stream, setStream] = useLocalStorage("aigc.stream", true);
-
-  // 浏览器小模型（web-llm）配置（仅保留体积最小的选项，避免误选大模型导致初始化耗时）
+  // 浏览器小模型（web-llm）配置
   const [browserModel, setBrowserModel] = useLocalStorage(
     "aigc.browserModel",
     "Qwen2.5-0.5B-Instruct-q4f32_1-MLC"
-  );
-  // 模型来源：默认在线源 / 本地内置路径
-  const [modelSource, setModelSource] = useLocalStorage<"default" | "local">(
-    "aigc.modelSource",
-    "default"
-  );
-  // 当选择“本地”时，配置模型根路径与 wasm 库路径（可放 public/models 下）
-  const [localModelBase, setLocalModelBase] = useLocalStorage(
-    "aigc.localModelBase",
-    "/models/qwen2.5-0.5b-instruct-q4f32_1-MLC"
-  );
-  const [localModelLib, setLocalModelLib] = useLocalStorage(
-    "aigc.localModelLib",
-    "/models/qwen2.5-0.5b-instruct-q4f32_1-MLC/model.wasm"
   );
 
   const engineRef = useRef<any | null>(null);
@@ -136,47 +126,51 @@ function App() {
       title: "新对话",
       messages: [
         { id: uid(), role: "system", content: "你是一个有帮助的智能助手。" },
-        { id: uid(), role: "assistant", content: "你好，我可以为你提供智能问答服务～" }
+        {
+          id: uid(),
+          role: "assistant",
+          content: "你好，我可以为你提供智能问答服务～",
+        },
       ],
       createdAt: Date.now(),
-      updatedAt: Date.now()
+      updatedAt: Date.now(),
     };
-    setSessionManager(prev => ({
+    setSessionManager((prev) => ({
       sessions: [newSession, ...prev.sessions],
-      currentSessionId: newSession.id
+      currentSessionId: newSession.id,
     }));
   };
 
   const switchSession = (sessionId: string) => {
-    setSessionManager(prev => ({
+    setSessionManager((prev) => ({
       ...prev,
-      currentSessionId: sessionId
+      currentSessionId: sessionId,
     }));
   };
 
   const deleteSession = (sessionId: string) => {
-    setSessionManager(prev => {
-      const newSessions = prev.sessions.filter(s => s.id !== sessionId);
+    setSessionManager((prev) => {
+      const newSessions = prev.sessions.filter((s) => s.id !== sessionId);
       let newCurrentId = prev.currentSessionId;
-      
+
       // 如果删除的是当前会话，切换到第一个会话
       if (sessionId === prev.currentSessionId && newSessions.length > 0) {
         newCurrentId = newSessions[0].id;
       }
-      
+
       return {
         sessions: newSessions,
-        currentSessionId: newCurrentId
+        currentSessionId: newCurrentId,
       };
     });
   };
 
   const updateCurrentSession = (messages: Message[]) => {
     if (!currentSession) return;
-    
+
     // 自动生成会话标题（基于第一条用户消息）
     let newTitle = currentSession.title;
-    const userMessages = messages.filter(m => m.role === "user");
+    const userMessages = messages.filter((m) => m.role === "user");
     if (userMessages.length === 1 && currentSession.title === "新对话") {
       const firstUserMessage = userMessages[0].content;
       // 取前20个字符作为标题，去掉换行符
@@ -185,14 +179,14 @@ function App() {
         newTitle += "...";
       }
     }
-    
-    setSessionManager(prev => ({
+
+    setSessionManager((prev) => ({
       ...prev,
-      sessions: prev.sessions.map(s => 
-        s.id === currentSession.id 
+      sessions: prev.sessions.map((s) =>
+        s.id === currentSession.id
           ? { ...s, messages, updatedAt: Date.now(), title: newTitle }
           : s
-      )
+      ),
     }));
   };
   const [engineReady, setEngineReady] = useState(false);
@@ -214,15 +208,7 @@ function App() {
   );
 
   // 读取这些变量以规避 TS noUnusedLocals（它们在 JSX/事件中会被使用）
-  void [
-    setEngine,
-    setTheme,
-    setStream,
-    setModelSource,
-    setLocalModelBase,
-    setLocalModelLib,
-    showSettings,
-  ];
+  void [setEngine, setTheme, showSettings];
 
   // 始终滚到底部
   useEffect(() => {
@@ -246,13 +232,7 @@ function App() {
 
   // 初始化/重建 web-llm 引擎
   useEffect(() => {
-    if (engine === "remote") {
-      // 远程API无需初始化
-      engineRef.current = null;
-      setEngineReady(true);
-      setProgressText("云端 API 已就绪");
-      return;
-    } else if (engine !== "browser") {
+    if (engine !== "browser") {
       engineRef.current = null;
       setEngineReady(false);
       setProgressText("");
@@ -261,9 +241,7 @@ function App() {
     let cancelled = false;
     setEngineReady(false);
     setProgressText(
-      modelSource === "local"
-        ? "从本地内置模型源加载…（首次访问会拷贝到浏览器缓存）"
-        : "准备加载本地模型…（首次会下载较大文件，请耐心等待，二次打开将使用缓存）"
+      "准备加载本地模型…（首次会下载较大文件，请耐心等待，二次打开将使用缓存）"
     );
     (async () => {
       try {
@@ -292,61 +270,13 @@ function App() {
         const mod = await webllmModulePromise;
         const { CreateMLCEngine } = mod as any;
 
-        // 在使用“本地内置路径”时做一次前置校验，路径无效则自动回退到默认在线源并提示
-        if (modelSource === "local") {
-          const ok = await (async () => {
-            try {
-              const baseUrl = new URL(
-                localModelBase,
-                location.origin
-              ).toString();
-              const libUrl = new URL(localModelLib, location.origin).toString();
-              // 简短可中止的 HEAD 探测，避免长时间卡住
-              const ac = new AbortController();
-              const timer = setTimeout(() => ac.abort(), 3000);
-              const r = await fetch(libUrl, {
-                method: "HEAD",
-                signal: ac.signal,
-              });
-              clearTimeout(timer);
-              // 200-299 视为可用
-              return r.ok && !!baseUrl && !!libUrl;
-            } catch {
-              return false;
-            }
-          })();
-
-          if (!ok) {
-            if (!cancelled) {
-              setProgressText(
-                "检测到本地模型路径无效，已自动回退到默认在线源。"
-              );
-              setModelSource("default");
-            }
-            return;
-          }
-        }
-
-        // 构建引擎配置（将进度回调与可选 appConfig 合并到第二个参数）
+        // 构建引擎配置
         const engineConfig: any = {
           initProgressCallback: (report: any) => {
             if (cancelled) return;
             const t = report?.text || JSON.stringify(report);
             setProgressText(t);
           },
-          ...(modelSource === "local"
-            ? {
-                appConfig: {
-                  model_list: [
-                    {
-                      model: localModelBase,
-                      model_id: browserModel,
-                      model_lib: localModelLib,
-                    },
-                  ],
-                },
-              }
-            : {}),
         };
 
         const creating = CreateMLCEngine(browserModel, engineConfig);
@@ -371,7 +301,7 @@ function App() {
     return () => {
       cancelled = true;
     };
-  }, [engine, browserModel, modelSource, localModelBase, localModelLib]);
+  }, [engine, browserModel]);
 
   const canSend = useMemo(
     () => input.trim().length > 0 && !loading,
@@ -392,57 +322,34 @@ function App() {
         .concat(userMsg)
         .map(({ role, content }) => ({ role, content }));
 
-      if (engine === "remote") {
-        // 调用后端代理（Vercel Serverless/Edge）
-        const resp = await fetch("/api/chat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ messages: sendMessages, stream: false }),
-        });
-        if (!resp.ok) throw new Error(`后端错误：${resp.status}`);
-        const data = await resp.json();
-        const content: string =
-          data?.choices?.[0]?.message?.content || data?.content || "";
-        const assistantMsg = { id: uid(), role: "assistant", content };
-        updateCurrentSession([...newMessages, assistantMsg]);
-      } else {
-        if (!engineReady || !engineRef.current) {
-          const waitingMsg = {
-            id: uid(),
-            role: "assistant",
-            content: "本地模型初始化中，请稍候…",
-          };
-          updateCurrentSession([...newMessages, waitingMsg]);
-          return;
-        }
-        const eng = engineRef.current;
-        if (stream) {
-          const assistantId = uid();
-          let currentMessages = [...newMessages, { id: assistantId, role: "assistant", content: "" }];
+      if (!engineReady || !engineRef.current) {
+        const waitingMsg = {
+          id: uid(),
+          role: "assistant",
+          content: "本地模型初始化中，请稍候…",
+        };
+        updateCurrentSession([...newMessages, waitingMsg]);
+        return;
+      }
+      const eng = engineRef.current;
+      const assistantId = uid();
+      let currentMessages = [
+        ...newMessages,
+        { id: assistantId, role: "assistant", content: "" },
+      ];
+      updateCurrentSession(currentMessages);
+
+      const streamResp = await eng.chat.completions.create({
+        messages: sendMessages,
+        stream: true,
+      });
+      for await (const chunk of streamResp) {
+        const delta: string = chunk?.choices?.[0]?.delta?.content || "";
+        if (delta) {
+          currentMessages = currentMessages.map((mm) =>
+            mm.id === assistantId ? { ...mm, content: mm.content + delta } : mm
+          );
           updateCurrentSession(currentMessages);
-          
-          const streamResp = await eng.chat.completions.create({
-            messages: sendMessages,
-            stream: true,
-          });
-          for await (const chunk of streamResp) {
-            const delta: string = chunk?.choices?.[0]?.delta?.content || "";
-            if (delta) {
-              currentMessages = currentMessages.map((mm) =>
-                mm.id === assistantId
-                  ? { ...mm, content: mm.content + delta }
-                  : mm
-              );
-              updateCurrentSession(currentMessages);
-            }
-          }
-        } else {
-          const out = await eng.chat.completions.create({
-            messages: sendMessages,
-          });
-          const content: string = out?.choices?.[0]?.message?.content ?? "";
-          const assistantMsg = { id: uid(), role: "assistant", content };
-          updateCurrentSession([...newMessages, assistantMsg]);
         }
       }
     } catch (e: any) {
@@ -465,7 +372,10 @@ function App() {
     <div className={`app theme-${theme}`}>
       <header className="header">
         <div className="topbar-left">
-          <button className="btn ghost" onClick={() => setShowSidebar(!showSidebar)}>
+          <button
+            className="btn ghost"
+            onClick={() => setShowSidebar(!showSidebar)}
+          >
             ☰
           </button>
         </div>
@@ -473,9 +383,7 @@ function App() {
           <div className="status-mini">
             <span className="progress-text">{progressText}</span>
             <span className="ready-dot" data-ready={engineReady}></span>
-            <span className="engine-indicator">
-              {engine === "browser" ? "浏览器模型" : "云端API"}
-            </span>
+            <span className="engine-indicator">浏览器模型</span>
           </div>
           <button className="btn ghost" onClick={() => setShowSettings(true)}>
             设置
@@ -501,7 +409,9 @@ function App() {
                 <div
                   key={session.id}
                   className={`session-item ${
-                    session.id === sessionManager.currentSessionId ? "active" : ""
+                    session.id === sessionManager.currentSessionId
+                      ? "active"
+                      : ""
                   }`}
                   onClick={() => {
                     switchSession(session.id);
@@ -596,8 +506,7 @@ function App() {
                   value={engine}
                   onChange={(e) => setEngine(e.target.value as EngineMode)}
                 >
-                  <option value="browser">浏览器模型</option>
-                  <option value="remote">云端API</option>
+                  <option value="browser">AI大模型</option>
                 </select>
               </div>
               {/* 
@@ -615,67 +524,17 @@ function App() {
                 </select>
               </div> */}
 
-              {engine === "browser" && (
-                <>
-                  <div className="field">
-                    <label>浏览器模型</label>
-                    <select
-                      value={browserModel}
-                      onChange={(e) => setBrowserModel(e.target.value)}
-                    >
-                      <option value="Qwen2.5-0.5B-Instruct-q4f32_1-MLC">
-                        Qwen2.5-0.5B (浏览器内运行)
-                      </option>
-                    </select>
-                  </div>
-
-                  <div className="field">
-                    <label>模型来源</label>
-                    <select
-                      value={modelSource}
-                      onChange={(e) => setModelSource(e.target.value as any)}
-                    >
-                      <option value="default">默认在线源</option>
-                      <option value="local">本地内置路径</option>
-                    </select>
-                  </div>
-
-                  {modelSource === "local" && (
-                    <div className="row">
-                      <div className="field">
-                        <label>模型根路径</label>
-                        <input
-                          type="text"
-                          value={localModelBase}
-                          onChange={(e) => setLocalModelBase(e.target.value)}
-                          placeholder="/models/qwen2.5-0.5b-instruct-q4f32_1-MLC"
-                        />
-                      </div>
-                      <div className="field">
-                        <label>WASM库路径</label>
-                        <input
-                          type="text"
-                          value={localModelLib}
-                          onChange={(e) => setLocalModelLib(e.target.value)}
-                          placeholder="/models/qwen2.5-0.5b-instruct-q4f32_1-MLC/model.wasm"
-                        />
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="field">
-                    <label>
-                      <input
-                        type="checkbox"
-                        checked={stream}
-                        onChange={(e) => setStream(e.target.checked)}
-                        style={{ marginRight: "8px" }}
-                      />
-                      启用流式输出
-                    </label>
-                  </div>
-                </>
-              )}
+              <div className="field">
+                <label>AI大模型</label>
+                <select
+                  value={browserModel}
+                  onChange={(e) => setBrowserModel(e.target.value)}
+                >
+                  <option value="Qwen2.5-0.5B-Instruct-q4f32_1-MLC">
+                    Qwen2.5-0.5B
+                  </option>
+                </select>
+              </div>
             </div>
           </div>
         </div>
