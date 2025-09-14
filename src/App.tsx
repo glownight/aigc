@@ -404,6 +404,108 @@ function App() {
           {loading ? "发送中…" : "发送"}
         </button>
       </footer>
+
+      {/* 设置弹窗 */}
+      {showSettings && (
+        <div className="modal-backdrop" onClick={() => setShowSettings(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2 className="modal-title">设置</h2>
+              <button className="btn ghost" onClick={() => setShowSettings(false)}>
+                ✕
+              </button>
+            </div>
+            <div className="settings">
+              <div className="field">
+                <label>引擎模式</label>
+                <select
+                  value={engine}
+                  onChange={(e) => setEngine(e.target.value as EngineMode)}
+                >
+                  <option value="browser">本地小模型</option>
+                  <option value="remote">云端API</option>
+                </select>
+              </div>
+
+              <div className="field">
+                <label>主题</label>
+                <select
+                  value={theme}
+                  onChange={(e) => setTheme(e.target.value as any)}
+                >
+                  <option value="blue">蓝色</option>
+                  <option value="pink">粉色</option>
+                  <option value="green">绿色</option>
+                  <option value="yellow">黄色</option>
+                  <option value="black">黑色</option>
+                </select>
+              </div>
+
+              {engine === "browser" && (
+                <>
+                  <div className="field">
+                    <label>本地模型</label>
+                    <select
+                      value={browserModel}
+                      onChange={(e) => setBrowserModel(e.target.value)}
+                    >
+                      <option value="Qwen2.5-0.5B-Instruct-q4f32_1-MLC">
+                        Qwen2.5-0.5B (推荐)
+                      </option>
+                    </select>
+                  </div>
+
+                  <div className="field">
+                    <label>模型来源</label>
+                    <select
+                      value={modelSource}
+                      onChange={(e) => setModelSource(e.target.value as any)}
+                    >
+                      <option value="default">默认在线源</option>
+                      <option value="local">本地内置路径</option>
+                    </select>
+                  </div>
+
+                  {modelSource === "local" && (
+                    <div className="row">
+                      <div className="field">
+                        <label>模型根路径</label>
+                        <input
+                          type="text"
+                          value={localModelBase}
+                          onChange={(e) => setLocalModelBase(e.target.value)}
+                          placeholder="/models/qwen2.5-0.5b-instruct-q4f32_1-MLC"
+                        />
+                      </div>
+                      <div className="field">
+                        <label>WASM库路径</label>
+                        <input
+                          type="text"
+                          value={localModelLib}
+                          onChange={(e) => setLocalModelLib(e.target.value)}
+                          placeholder="/models/qwen2.5-0.5b-instruct-q4f32_1-MLC/model.wasm"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="field">
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={stream}
+                        onChange={(e) => setStream(e.target.checked)}
+                        style={{ marginRight: "8px" }}
+                      />
+                      启用流式输出
+                    </label>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
