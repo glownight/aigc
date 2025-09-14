@@ -383,7 +383,7 @@ function App() {
           <div className="status-mini">
             <span className="progress-text">{progressText}</span>
             <span className="ready-dot" data-ready={engineReady}></span>
-            <span className="engine-indicator">浏览器模型</span>
+            <span className="engine-indicator">{browserModel}</span>
           </div>
           <button className="btn ghost" onClick={() => setShowSettings(true)}>
             设置
