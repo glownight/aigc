@@ -49,7 +49,7 @@ function useLocalStorage<T>(key: string, initial: T) {
 function App() {
   const { sessionId } = useParams<{ sessionId?: string }>();
   const navigate = useNavigate();
-  
+
   const [messages, setMessages] = useState<Message[]>([
     { id: uid(), role: "system", content: "你是一个有帮助的智能助手。" },
     {
@@ -97,13 +97,15 @@ function App() {
     } else {
       // 处理URL中的sessionId
       if (sessionId) {
-        const existingSession = sessionManager.sessions.find(s => s.id === sessionId);
+        const existingSession = sessionManager.sessions.find(
+          (s) => s.id === sessionId
+        );
         if (existingSession) {
           // 如果会话存在，切换到该会话
           if (sessionManager.currentSessionId !== sessionId) {
-            setSessionManager(prev => ({
+            setSessionManager((prev) => ({
               ...prev,
-              currentSessionId: sessionId
+              currentSessionId: sessionId,
             }));
           }
         } else {
@@ -112,7 +114,8 @@ function App() {
         }
       } else {
         // 如果没有sessionId，跳转到当前会话或第一个会话
-        const targetId = sessionManager.currentSessionId || sessionManager.sessions[0].id;
+        const targetId =
+          sessionManager.currentSessionId || sessionManager.sessions[0].id;
         navigate(`/chat/${targetId}`, { replace: true });
       }
     }
@@ -233,13 +236,20 @@ function App() {
   const [progressText, setProgressText] = useState("");
 
   const [loading, setLoading] = useState(false);
+  const [abortController, setAbortController] =
+    useState<AbortController | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false); // 防止重复请求
+  const [engineBusy, setEngineBusy] = useState(false); // 引擎忙碌状态
+  const [forceEngineReset, setForceEngineReset] = useState(false); // 强制引擎重置
   const listRef = useRef<HTMLDivElement>(null);
   // Kimi风格：设置弹窗与建议卡片
   const [showSettings, setShowSettings] = useState(false);
   const [showSidebar, setShowSidebar] = useState(false);
   // 批量删除功能状态
   const [batchDeleteMode, setBatchDeleteMode] = useState(false);
-  const [selectedSessions, setSelectedSessions] = useState<Set<string>>(new Set());
+  const [selectedSessions, setSelectedSessions] = useState<Set<string>>(
+    new Set()
+  );
   const suggestions = useMemo(
     () => [
       "介绍一下你自己",
@@ -347,55 +357,211 @@ function App() {
   }, [engine, browserModel]);
 
   const canSend = useMemo(
-    () => input.trim().length > 0 && !loading,
-    [input, loading]
+    () => input.trim().length > 0 && !loading && !isProcessing && !engineBusy,
+    [input, loading, isProcessing, engineBusy]
   );
+
+  // 强制重新初始化引擎的函数
+  async function forceEngineReinit() {
+    console.log('[forceEngineReinit] 开始强制重新初始化引擎...');
+    
+    try {
+      // 清理全局单例
+      if (__g.__mlc_singleton) {
+        __g.__mlc_singleton.engine = null;
+        __g.__mlc_singleton.model = "";
+        __g.__mlc_singleton.creating = null;
+      }
+      
+      // 清理当前引擎引用
+      engineRef.current = null;
+      setEngineReady(false);
+      setProgressText('引擎重新初始化中...');
+      
+      // 等待一段时间让引擎完全清理
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // 重新创建引擎
+      const mod = await webllmModulePromise;
+      const { CreateMLCEngine } = mod as any;
+      
+      const engineConfig: any = {
+        initProgressCallback: (report: any) => {
+          const t = report?.text || JSON.stringify(report);
+          setProgressText(`重新初始化: ${t}`);
+        },
+      };
+      
+      const creating = CreateMLCEngine(browserModel, engineConfig);
+      __g.__mlc_singleton.creating = creating;
+      const eng = await creating;
+      
+      __g.__mlc_singleton.engine = eng;
+      __g.__mlc_singleton.model = browserModel;
+      __g.__mlc_singleton.creating = null;
+      engineRef.current = eng;
+      setEngineReady(true);
+      setProgressText('引擎重新初始化完成，可以开始对话。');
+      
+      console.log('[forceEngineReinit] 引擎强制重新初始化完成');
+    } catch (e) {
+      console.error('[forceEngineReinit] 强制重新初始化失败:', e);
+      setProgressText('引擎重新初始化失败，请刷新页面。');
+      throw e;
+    }
+  }
 
   async function handleSend(overrideText?: string) {
     const text = overrideText ?? input;
-    if (!(text.trim().length > 0) || loading) return;
+    if (!(text.trim().length > 0) || loading || isProcessing || engineBusy || forceEngineReset) return;
+    
+    console.log('[handleSend] 开始发送请求...');
+    
     const userMsg: Message = { id: uid(), role: "user", content: text.trim() };
     const newMessages = [...sessionMessages, userMsg];
     updateCurrentSession(newMessages);
     setInput("");
 
+    // 设置所有保护状态
+    setIsProcessing(true);
+    setLoading(true);
+    setEngineBusy(true);
+    
+    // 创建新的AbortController
+    const controller = new AbortController();
+    setAbortController(controller);
+
+    // 确保引擎就绪的最终检查
+    if (!engineReady || !engineRef.current) {
+      const waitingMsg: Message = {
+        id: uid(),
+        role: "assistant" as Role,
+        content: "本地模型初始化中，请稍候…",
+      };
+      updateCurrentSession([...newMessages, waitingMsg]);
+      
+      // 清理状态
+      setLoading(false);
+      setAbortController(null);
+      setTimeout(() => {
+        setIsProcessing(false);
+        setEngineBusy(false);
+      }, 500);
+      return;
+    }
+
     try {
-      setLoading(true);
       const sendMessages = sessionMessages
         .concat(userMsg)
         .map(({ role, content }) => ({ role, content }));
 
-      if (!engineReady || !engineRef.current) {
-        const waitingMsg: Message = {
-          id: uid(),
-          role: "assistant" as Role,
-          content: "本地模型初始化中，请稍候…",
-        };
-        updateCurrentSession([...newMessages, waitingMsg]);
-        return;
-      }
       const eng = engineRef.current;
       const assistantId = uid();
-      let currentMessages: Message[] = [
-        ...newMessages,
-        { id: assistantId, role: "assistant" as Role, content: "" },
-      ];
-      updateCurrentSession(currentMessages);
+      let assistantMessage: Message | null = null;
+      let hasStartedStreaming = false;
+      let streamResp;
 
-      const streamResp = await eng.chat.completions.create({
-        messages: sendMessages,
-        stream: true,
-      });
-      for await (const chunk of streamResp) {
-        const delta: string = chunk?.choices?.[0]?.delta?.content || "";
-        if (delta) {
-          currentMessages = currentMessages.map((mm) =>
-            mm.id === assistantId ? { ...mm, content: mm.content + delta } : mm
-          );
-          updateCurrentSession(currentMessages);
+      console.log('[handleSend] 创建流式请求...');
+      
+      try {
+        // 强制等待一小段时间，确保引擎状态稳定
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        console.log('[handleSend] 调用引擎API...');
+        
+        // 添加超时机制，防止引擎无限等待
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => {
+            reject(new Error('引擎请求超时，可能需要重新初始化引擎'));
+          }, 15000); // 15秒超时
+        });
+        
+        const createPromise = eng.chat.completions.create({
+          messages: sendMessages,
+          stream: true,
+        });
+        
+        // 使用Promise.race实现超时机制
+        streamResp = await Promise.race([createPromise, timeoutPromise]);
+        
+        console.log('[handleSend] 流式请求创建成功，返回对象:', typeof streamResp);
+        console.log('[handleSend] 检查流式响应是否为异步迭代器:', streamResp && typeof streamResp[Symbol.asyncIterator] === 'function');
+      } catch (error) {
+        console.error('[handleSend] 创建流式请求失败:', error);
+        
+        // 如果是超时错误，尝试重新初始化引擎
+        if (error instanceof Error && error.message && error.message.includes('超时')) {
+          console.log('[handleSend] 检测到引擎超时，尝试强制重新初始化...');
+          await forceEngineReinit();
+          throw new Error('引擎超时，已重新初始化，请重试');
         }
+        
+        throw error;
+      }
+
+      try {
+        console.log('[handleSend] 开始处理流式响应，准备迭代...');
+        
+        let chunkCount = 0;
+        for await (const chunk of streamResp) {
+          chunkCount++;
+          console.log(`[handleSend] 接收到第${chunkCount}个chunk:`, chunk);
+          
+          // 检查是否被中止
+          if (controller.signal.aborted) {
+            console.log('[handleSend] 检测到中止信号，退出处理');
+            break;
+          }
+
+          const delta: string = chunk?.choices?.[0]?.delta?.content || "";
+          console.log(`[handleSend] 解析得到delta内容: "${delta}"`);
+          
+          if (delta) {
+            // 只有在第一次接收到内容时才创建 assistant 消息
+            if (!hasStartedStreaming) {
+              console.log('[handleSend] 开始接收内容，创建助手消息');
+              assistantMessage = {
+                id: assistantId,
+                role: "assistant" as Role,
+                content: delta,
+              };
+              const messagesWithAssistant = [...newMessages, assistantMessage];
+              updateCurrentSession(messagesWithAssistant);
+              hasStartedStreaming = true;
+            } else {
+              // 更新内容
+              assistantMessage!.content += delta;
+              const currentMessages = [...newMessages, assistantMessage!];
+              updateCurrentSession(currentMessages);
+            }
+          }
+        }
+        
+        console.log(`[handleSend] 流式处理完成，总共处理了${chunkCount}个chunk`);
+      } finally {
+        // 确保流式响应被正确关闭
+        try {
+          if (streamResp && streamResp.return) {
+            await streamResp.return();
+            console.log('[handleSend] 流式响应已关闭');
+          }
+        } catch (e) {
+          console.warn('[handleSend] 流式响应关闭时出错:', e);
+        }
+        
+        // 强制等待引擎完全清理内部状态
+        await new Promise(resolve => setTimeout(resolve, 200));
       }
     } catch (e: any) {
+      console.error('[handleSend] 请求处理出错:', e);
+      
+      // 检查是否被中止
+      if (controller.signal.aborted) {
+        console.log('[handleSend] 请求被中止，不显示错误消息');
+        return;
+      }
+
+      // 显示错误消息
       const errorMsg: Message = {
         id: uid(),
         role: "assistant" as Role,
@@ -403,8 +569,64 @@ function App() {
       };
       updateCurrentSession([...newMessages, errorMsg]);
     } finally {
+      console.log('[handleSend] 清理状态...');
+      
+      // 立即清理UI状态
       setLoading(false);
+      setAbortController(null);
+      
+      // 延迟重置处理状态，确保所有异步操作完成
+      setTimeout(() => {
+        setIsProcessing(false);
+        console.log('[handleSend] 处理状态已重置');
+      }, 300);
+      
+      // 延迟更长时间重置引擎忙碌状态，确保引擎完全就绪
+      setTimeout(() => {
+        setEngineBusy(false);
+        console.log('[handleSend] 引擎状态已重置');
+      }, 1000);
     }
+  }
+
+  // 停止AI回答的功能
+  function handleStop() {
+    console.log('[handleStop] 执行停止操作...');
+    
+    if (abortController) {
+      console.log('[handleStop] 中止当前请求...');
+      abortController.abort();
+    }
+    
+    // 立即清理UI状态
+    setLoading(false);
+    setAbortController(null);
+    
+    // 延迟清理处理状态和空消息，给异步操作一些时间完成
+    setTimeout(() => {
+      console.log('[handleStop] 清理处理状态和空消息...');
+      setIsProcessing(false);
+      
+      // 清理未完成的空AI消息
+      if (currentSession) {
+        const cleanedMessages = sessionMessages.filter(
+          (m) => !(m.role === "assistant" && m.content.trim() === "")
+        );
+        if (cleanedMessages.length !== sessionMessages.length) {
+          console.log('[handleStop] 清理了空的AI消息');
+          updateCurrentSession(cleanedMessages);
+        }
+      }
+    }, 300);
+    
+    // 延迟更长时间重置引擎状态，确保引擎完全就绪
+    setTimeout(() => {
+      setEngineBusy(false);
+      console.log('[handleStop] 引擎状态已重置，可以接受新请求');
+      
+      // 简化重置逻辑，不再自动强制重置
+      console.log('[handleStop] 停止操作完成，如果再次发送失败将自动重新初始化引擎');
+    }, 1000);
   }
 
   // 批量删除相关函数
@@ -424,7 +646,7 @@ function App() {
   }
 
   function selectAllSessions() {
-    const allSessionIds = new Set(sessionManager.sessions.map(s => s.id));
+    const allSessionIds = new Set(sessionManager.sessions.map((s) => s.id));
     setSelectedSessions(allSessionIds);
   }
 
@@ -434,11 +656,11 @@ function App() {
 
   function handleBatchDelete() {
     if (selectedSessions.size === 0) return;
-    
+
     const sessionsToKeep = sessionManager.sessions.filter(
-      s => !selectedSessions.has(s.id)
+      (s) => !selectedSessions.has(s.id)
     );
-    
+
     // 如果删除后没有会话了，创建一个新的
     if (sessionsToKeep.length === 0) {
       const newSession: Session = {
@@ -462,19 +684,23 @@ function App() {
       navigate(`/chat/${newSession.id}`);
     } else {
       // 如果当前会话被删除，切换到第一个剩余的会话
-      const currentSessionDeleted = selectedSessions.has(sessionManager.currentSessionId);
-      const newCurrentId = currentSessionDeleted ? sessionsToKeep[0].id : sessionManager.currentSessionId;
-      
+      const currentSessionDeleted = selectedSessions.has(
+        sessionManager.currentSessionId
+      );
+      const newCurrentId = currentSessionDeleted
+        ? sessionsToKeep[0].id
+        : sessionManager.currentSessionId;
+
       setSessionManager({
         sessions: sessionsToKeep,
         currentSessionId: newCurrentId,
       });
-      
+
       if (currentSessionDeleted) {
         navigate(`/chat/${newCurrentId}`);
       }
     }
-    
+
     // 重置批量删除模式
     setBatchDeleteMode(false);
     setSelectedSessions(new Set());
@@ -516,10 +742,17 @@ function App() {
           <div className="sidebar" onClick={(e) => e.stopPropagation()}>
             <div className="sidebar-header">
               <h3>历史会话</h3>
-              <div className="sidebar-actions">
+              <div
+                className={`sidebar-actions ${
+                  batchDeleteMode ? "batch-mode" : ""
+                }`}
+              >
                 {!batchDeleteMode ? (
                   <>
-                    <button className="btn ghost" onClick={toggleBatchDeleteMode}>
+                    <button
+                      className="btn ghost"
+                      onClick={toggleBatchDeleteMode}
+                    >
                       批量删除
                     </button>
                     <button className="btn ghost" onClick={createNewSession}>
@@ -528,20 +761,29 @@ function App() {
                   </>
                 ) : (
                   <>
-                    <button 
-                      className="btn ghost" 
-                      onClick={selectedSessions.size === sessionManager.sessions.length ? deselectAllSessions : selectAllSessions}
+                    <button
+                      className="btn ghost"
+                      onClick={
+                        selectedSessions.size === sessionManager.sessions.length
+                          ? deselectAllSessions
+                          : selectAllSessions
+                      }
                     >
-                      {selectedSessions.size === sessionManager.sessions.length ? '取消全选' : '全选'}
+                      {selectedSessions.size === sessionManager.sessions.length
+                        ? "取消全选"
+                        : "全选"}
                     </button>
-                    <button 
-                      className="btn danger" 
+                    <button
+                      className="btn danger"
                       onClick={handleBatchDelete}
                       disabled={selectedSessions.size === 0}
                     >
                       删除({selectedSessions.size})
                     </button>
-                    <button className="btn ghost" onClick={toggleBatchDeleteMode}>
+                    <button
+                      className="btn ghost"
+                      onClick={toggleBatchDeleteMode}
+                    >
                       取消
                     </button>
                   </>
@@ -553,12 +795,11 @@ function App() {
                 <div
                   key={session.id}
                   className={`session-item ${
-                    session.id === (sessionId || sessionManager.currentSessionId)
+                    session.id ===
+                    (sessionId || sessionManager.currentSessionId)
                       ? "active"
                       : ""
-                  } ${
-                    batchDeleteMode ? "batch-mode" : ""
-                  }`}
+                  } ${batchDeleteMode ? "batch-mode" : ""}`}
                   onClick={() => {
                     if (batchDeleteMode) {
                       toggleSessionSelection(session.id);
@@ -625,22 +866,24 @@ function App() {
                 <div className="role">{m.role === "user" ? "我" : "AI"}</div>
                 <div className="bubble">
                   {m.content ? (
-                    <MessageContent content={m.content} role={m.role as "user" | "assistant"} />
-                  ) : (
-                    loading && m.role === "assistant" ? (
-                      <div className="loading-indicator">
-                        <div className="typing-dots">
-                          <span></span>
-                          <span></span>
-                          <span></span>
-                        </div>
+                    <MessageContent
+                      content={m.content}
+                      role={m.role as "user" | "assistant"}
+                    />
+                  ) : loading && m.role === "assistant" ? (
+                    <div className="loading-indicator">
+                      <div className="typing-dots">
+                        <span></span>
+                        <span></span>
+                        <span></span>
                       </div>
-                    ) : ""
+                    </div>
+                  ) : (
+                    ""
                   )}
                 </div>
               </div>
             ))}
-
         </div>
       </main>
 
@@ -652,13 +895,25 @@ function App() {
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.shiftKey) {
               e.preventDefault();
-              handleSend();
+              if (loading) {
+                handleStop();
+              } else {
+                handleSend();
+              }
             }
           }}
         />
-        <button disabled={!canSend} onClick={() => handleSend()}>
-          {loading ? "发送中…" : "发送"}
-        </button>
+        <div className="composer-actions">
+          {loading ? (
+            <button className="btn danger" onClick={handleStop}>
+              停止
+            </button>
+          ) : (
+            <button disabled={!canSend} onClick={() => handleSend()}>
+              发送
+            </button>
+          )}
+        </div>
       </footer>
 
       {/* 设置弹窗 */}

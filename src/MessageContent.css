@@ -18,19 +18,74 @@
   margin-bottom: 0;
 }
 
-/* AI消息样式 */
+/* AI消息样式 - 护眼配色 */
 .assistant-content {
-  color: var(--text);
+  color: #c0c0c0;
+  position: relative;
 }
 
-/* Markdown 标题样式 */
+/* 内容包装器 */
+.content-wrapper {
+  position: relative;
+}
+
+/* 复制按钮样式 */
+.copy-button {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(40, 40, 40, 0.9);
+  border: 1px solid rgba(107, 174, 214, 0.3);
+  border-radius: 6px;
+  padding: 8px;
+  color: #6baed6;
+  cursor: pointer;
+  opacity: 0;
+  transition: all 0.2s ease;
+  z-index: 10;
+  backdrop-filter: blur(8px);
+  font-size: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.copy-button:hover {
+  background: rgba(107, 174, 214, 0.15);
+  border-color: #6baed6;
+  transform: scale(1.05);
+}
+
+.copy-button.copied {
+  color: #5dbe6a;
+  border-color: rgba(93, 190, 106, 0.5);
+  background: rgba(93, 190, 106, 0.1);
+}
+
+/* 在悬停时显示复制按钮 */
+.assistant-content:hover .copy-button {
+  opacity: 1;
+}
+
+/* 复制按钮动画 */
+.copy-button svg {
+  transition: transform 0.2s ease;
+}
+
+.copy-button.copied svg {
+  transform: scale(1.2);
+}
+
+/* Markdown 标题样式 - 护眼配色 */
 .md-h1 {
   font-size: 1.8em;
   font-weight: 700;
   margin: 1.2em 0 0.8em 0;
   padding-bottom: 0.3em;
   border-bottom: 2px solid var(--border);
-  color: var(--primary);
+  color: #6baed6;
 }
 
 .md-h2 {
@@ -39,42 +94,43 @@
   margin: 1em 0 0.6em 0;
   padding-bottom: 0.2em;
   border-bottom: 1px solid var(--border);
-  color: var(--text);
+  color: #b8b8b8;
 }
 
 .md-h3 {
   font-size: 1.3em;
   font-weight: 600;
   margin: 0.8em 0 0.5em 0;
-  color: var(--text);
+  color: #b8b8b8;
 }
 
 .md-h4 {
   font-size: 1.2em;
   font-weight: 600;
   margin: 0.7em 0 0.4em 0;
-  color: var(--text);
+  color: #b8b8b8;
 }
 
 .md-h5 {
   font-size: 1.1em;
   font-weight: 600;
   margin: 0.6em 0 0.3em 0;
-  color: var(--text);
+  color: #b8b8b8;
 }
 
 .md-h6 {
   font-size: 1em;
   font-weight: 600;
   margin: 0.5em 0 0.3em 0;
-  color: var(--text-muted);
+  color: #999999;
 }
 
-/* 段落样式 */
+/* 段落样式 - 护眼配色 */
 .md-paragraph {
   margin: 0.8em 0;
   line-height: 1.8;
   text-align: justify;
+  color: #c0c0c0;
 }
 
 .md-paragraph:first-child {
@@ -85,10 +141,11 @@
   margin-bottom: 0;
 }
 
-/* 列表样式 */
+/* 列表样式 - 护眼配色 */
 .md-list {
   margin: 1em 0;
   padding-left: 2em;
+  color: #c0c0c0;
 }
 
 .md-ordered-list {
@@ -98,10 +155,11 @@
 .md-list-item {
   margin: 0.5em 0;
   line-height: 1.6;
+  color: #c0c0c0;
 }
 
 .md-list-item::marker {
-  color: var(--primary);
+  color: #6baed6;
 }
 
 /* 嵌套列表 */
@@ -136,7 +194,7 @@
   color: var(--primary);
   padding: 0.2em 0.4em;
   border-radius: 4px;
-  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-family: "Monaco", "Menlo", "Ubuntu Mono", monospace;
   font-size: 0.9em;
   border: 1px solid var(--border);
 }
@@ -152,7 +210,7 @@
 }
 
 .md-code-block {
-  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-family: "Monaco", "Menlo", "Ubuntu Mono", monospace;
   font-size: 0.9em;
   line-height: 1.6;
   color: var(--text);
@@ -167,7 +225,7 @@
   background: var(--card);
   border-radius: 8px;
   overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .md-thead {
@@ -195,28 +253,28 @@
   background: rgba(var(--primary-rgb), 0.1);
 }
 
-/* 强调和斜体 */
+/* 强调和斜体 - 护眼配色 */
 .md-strong {
   font-weight: 700;
-  color: var(--text);
+  color: #d4d4d4;
 }
 
 .md-em {
   font-style: italic;
-  color: var(--text-muted);
+  color: #a0a0a0;
 }
 
-/* 链接样式 */
+/* 链接样式 - 护眼配色 */
 .md-link {
-  color: var(--primary);
+  color: #6baed6;
   text-decoration: none;
   border-bottom: 1px solid transparent;
   transition: all 0.2s ease;
 }
 
 .md-link:hover {
-  border-bottom-color: var(--primary);
-  background: rgba(var(--primary-rgb), 0.1);
+  border-bottom-color: #6baed6;
+  background: rgba(107, 174, 214, 0.15);
   padding: 0.1em 0.2em;
   margin: -0.1em -0.2em;
   border-radius: 4px;
@@ -226,7 +284,12 @@
 .md-hr {
   border: none;
   height: 2px;
-  background: linear-gradient(to right, transparent, var(--border), transparent);
+  background: linear-gradient(
+    to right,
+    transparent,
+    var(--border),
+    transparent
+  );
   margin: 2em 0;
 }
 
@@ -235,33 +298,33 @@
   .md-h1 {
     font-size: 1.6em;
   }
-  
+
   .md-h2 {
     font-size: 1.4em;
   }
-  
+
   .md-h3 {
     font-size: 1.2em;
   }
-  
+
   .md-list {
     padding-left: 1.5em;
   }
-  
+
   .md-blockquote {
     padding: 0.8em 1em;
     margin: 1em 0;
   }
-  
+
   .md-pre {
     padding: 1em;
     margin: 1em 0;
   }
-  
+
   .md-table {
     font-size: 0.9em;
   }
-  
+
   .md-th,
   .md-td {
     padding: 0.6em 0.8em;
@@ -298,7 +361,7 @@
 .md-ordered-list .md-list-item::before {
   content: counter(item) ".";
   counter-increment: item;
-  color: var(--primary);
+  color: #6baed6;
   font-weight: 600;
   position: absolute;
   left: -2em;
@@ -326,63 +389,63 @@
   color: inherit;
 }
 
-/* 优化highlight.js的主题 */
+/* 优化highlight.js的主题 - 护眼配色 */
 .hljs {
   padding: 1.5em !important;
   border-radius: 8px !important;
-  background: #1e1e1e !important;
-  color: #d4d4d4 !important;
-  font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace !important;
+  background: #1a1a1a !important;
+  color: #c9c9c9 !important;
+  font-family: "JetBrains Mono", "Fira Code", "Consolas", monospace !important;
   font-size: 0.9em !important;
   line-height: 1.6 !important;
 }
 
-/* 关键字高亮 */
+/* 关键字高亮 - 柔和蓝色 */
 .hljs-keyword {
-  color: #569cd6 !important;
-  font-weight: 600 !important;
+  color: #6baed6 !important;
+  font-weight: 500 !important;
 }
 
-/* 字符串高亮 */
+/* 字符串高亮 - 柔和橙色 */
 .hljs-string {
-  color: #ce9178 !important;
+  color: #d4a574 !important;
 }
 
-/* 注释高亮 */
+/* 注释高亮 - 柔和绿色 */
 .hljs-comment {
-  color: #6a9955 !important;
+  color: #7a9a6d !important;
   font-style: italic !important;
 }
 
-/* 数字高亮 */
+/* 数字高亮 - 柔和淡绿 */
 .hljs-number {
-  color: #b5cea8 !important;
+  color: #a3c585 !important;
 }
 
-/* 函数名高亮 */
+/* 函数名高亮 - 柔和黄色 */
 .hljs-title.function_ {
-  color: #dcdcaa !important;
-  font-weight: 600 !important;
+  color: #d4c785 !important;
+  font-weight: 500 !important;
 }
 
-/* 变量名高亮 */
+/* 变量名高亮 - 柔和汰蓝 */
 .hljs-variable {
-  color: #9cdcfe !important;
+  color: #8fc5d4 !important;
 }
 
-/* 类型高亮 */
+/* 类型高亮 - 柔和青色 */
 .hljs-type {
-  color: #4ec9b0 !important;
+  color: #6abaa3 !important;
 }
 
-/* 内联代码优化 */
+/* 内联代码优化 - 护眼配色 */
 .md-inline-code {
-  background: rgba(129, 140, 255, 0.12) !important;
-  color: #818cff !important;
-  border: 1px solid rgba(129, 140, 255, 0.2) !important;
+  background: rgba(106, 142, 214, 0.15) !important;
+  color: #6a8ed6 !important;
+  border: 1px solid rgba(106, 142, 214, 0.25) !important;
   border-radius: 4px !important;
   padding: 0.2em 0.4em !important;
-  font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace !important;
+  font-family: "JetBrains Mono", "Fira Code", "Consolas", monospace !important;
   font-size: 0.85em !important;
   font-weight: 500 !important;
 }
@@ -409,7 +472,7 @@
 
 /* 代码块复制按钮（可选功能） */
 .md-pre::before {
-  content: 'Code';
+  content: "Code";
   position: absolute;
   top: 0.5em;
   right: 1em;
@@ -424,7 +487,7 @@
 /* 代码语言标识 */
 .md-pre[class*="language-"]::before {
   content: attr(class);
-  content: '';
+  content: "";
 }
 
 .md-pre .hljs::before {
@@ -444,8 +507,23 @@
     padding: 1em !important;
     font-size: 0.8em !important;
   }
-  
+
   .md-inline-code {
     font-size: 0.8em !important;
+  }
+
+  /* 移动端复制按钮优化 */
+  .copy-button {
+    opacity: 1;
+    top: 4px;
+    right: 4px;
+    width: 28px;
+    height: 28px;
+    padding: 6px;
+  }
+
+  .copy-button svg {
+    width: 14px;
+    height: 14px;
   }
 }
