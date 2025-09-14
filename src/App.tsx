@@ -48,7 +48,7 @@ function App() {
   // 浏览器小模型（web-llm）配置（仅保留体积最小的选项，避免误选大模型导致初始化耗时）
   const [browserModel, setBrowserModel] = useLocalStorage(
     'aigc.browserModel',
-    'qwen2.5-0.5b-instruct-q4f32_1-MLC'
+    'Qwen2.5-0.5B-Instruct-q4f32_1-MLC'
   )
   // 模型来源：默认在线源 / 本地内置路径
   const [modelSource, setModelSource] = useLocalStorage<'default' | 'local'>('aigc.modelSource', 'default')
@@ -82,14 +82,27 @@ function App() {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: 'smooth' })
   }, [messages, loading])
 
+  // 迁移兼容：老版本小写模型 ID 更正为官方大小写
+  useEffect(() => {
+    if (browserModel === 'qwen2.5-0.5b-instruct-q4f32_1-MLC') {
+      setBrowserModel('Qwen2.5-0.5B-Instruct-q4f32_1-MLC')
+    }
+  }, [browserModel, setBrowserModel])
+
   // 启动时强制本地小模型（覆盖旧的 localStorage 值）并立即初始化
   useEffect(() => {
-    if (engine !== 'browser') setEngine('browser')
+    // 不再强制为 browser，允许 remote
   }, [])
 
   // 初始化/重建 web-llm 引擎
   useEffect(() => {
-    if (engine !== 'browser') {
+    if (engine === 'remote') {
+      // 远程API无需初始化
+      engineRef.current = null
+      setEngineReady(true)
+      setProgressText('云端 API 已就绪')
+      return
+    } else if (engine !== 'browser') {
       engineRef.current = null
       setEngineReady(false)
       setProgressText('')
@@ -127,9 +140,14 @@ function App() {
         const mod = await webllmModulePromise
         const { CreateMLCEngine } = mod as any
 
-        // 当选择“本地内置”时，使用 appConfig.model_list 覆盖模型与 wasm 库的 URL
-        const engineConfig =
-          modelSource === 'local'
+        // 构建引擎配置（将进度回调与可选 appConfig 合并到第二个参数）
+        const engineConfig: any = {
+          initProgressCallback: (report: any) => {
+            if (cancelled) return
+            const t = report?.text || JSON.stringify(report)
+            setProgressText(t)
+          },
+          ...(modelSource === 'local'
             ? {
                 appConfig: {
                   model_list: [
@@ -141,19 +159,10 @@ function App() {
                   ],
                 },
               }
-            : undefined
+            : {}),
+        }
 
-        const creating = CreateMLCEngine(
-          browserModel,
-          {
-            initProgressCallback: (report: any) => {
-              if (cancelled) return
-              const t = report?.text || JSON.stringify(report)
-              setProgressText(t)
-            },
-          },
-          engineConfig
-        )
+        const creating = CreateMLCEngine(browserModel, engineConfig)
         __g.__mlc_singleton.creating = creating
         const eng = await creating
         if (!cancelled) {
@@ -181,43 +190,55 @@ function App() {
 
   async function handleSend(overrideText?: string) {
     const text = overrideText ?? input
-    if (!(text.trim().length > 0) || loading) return
-    const userMsg: Message = { id: uid(), role: 'user', content: text.trim() }
-    setMessages((m) => [...m, userMsg])
-    setInput('')
+     if (!(text.trim().length > 0) || loading) return
+     const userMsg: Message = { id: uid(), role: 'user', content: text.trim() }
+     setMessages((m) => [...m, userMsg])
+     setInput('')
 
-    try {
-      setLoading(true)
-
-      if (!engineReady || !engineRef.current) {
-        setMessages((m) => [
-          ...m,
-          { id: uid(), role: 'assistant', content: '本地模型初始化中，请稍候…' },
-        ])
-        return
-      }
-      const eng = engineRef.current
+     try {
+       setLoading(true)
       const sendMessages = messages.concat(userMsg).map(({ role, content }) => ({ role, content }))
 
-      if (stream) {
-        const assistantId = uid()
-        setMessages((m) => [...m, { id: assistantId, role: 'assistant', content: '' }])
-        const streamResp = await eng.chat.completions.create({
-          messages: sendMessages,
-          stream: true,
+      if (engine === 'remote') {
+        // 调用后端代理（Vercel Serverless/Edge）
+        const resp = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ messages: sendMessages, stream: false }),
         })
-        for await (const chunk of streamResp) {
-          const delta: string = chunk?.choices?.[0]?.delta?.content || ''
-          if (delta) {
-            setMessages((prev) =>
-              prev.map((mm) => (mm.id === assistantId ? { ...mm, content: mm.content + delta } : mm))
-            )
-          }
-        }
-      } else {
-        const out = await eng.chat.completions.create({ messages: sendMessages })
-        const content: string = out?.choices?.[0]?.message?.content ?? ''
+        if (!resp.ok) throw new Error(`后端错误：${resp.status}`)
+        const data = await resp.json()
+        const content: string = data?.choices?.[0]?.message?.content || data?.content || ''
         setMessages((m) => [...m, { id: uid(), role: 'assistant', content }])
+      } else {
+        if (!engineReady || !engineRef.current) {
+          setMessages((m) => [
+            ...m,
+            { id: uid(), role: 'assistant', content: '本地模型初始化中，请稍候…' },
+          ])
+          return
+        }
+        const eng = engineRef.current
+        if (stream) {
+          const assistantId = uid()
+          setMessages((m) => [...m, { id: assistantId, role: 'assistant', content: '' }])
+          const streamResp = await eng.chat.completions.create({
+            messages: sendMessages,
+            stream: true,
+          })
+          for await (const chunk of streamResp) {
+            const delta: string = chunk?.choices?.[0]?.delta?.content || ''
+            if (delta) {
+              setMessages((prev) =>
+                prev.map((mm) => (mm.id === assistantId ? { ...mm, content: mm.content + delta } : mm))
+              )
+            }
+          }
+        } else {
+          const out = await eng.chat.completions.create({ messages: sendMessages })
+          const content: string = out?.choices?.[0]?.message?.content ?? ''
+          setMessages((m) => [...m, { id: uid(), role: 'assistant', content }])
+        }
       }
     } catch (e: any) {
       setMessages((m) => [
@@ -237,11 +258,14 @@ function App() {
     <div className={`app theme-${theme}`}>
       <header className="header">
         <h1>Kimi 风格智能助手</h1>
-        <div className="settings">
-          <div className="progress">{progressText}</div>
-          <div className="badge" aria-live="polite">状态：{engineReady ? '就绪' : '未就绪'}</div>
-          <button onClick={() => setShowSettings(true)}>设置</button>
-          <button onClick={handleClear}>新会话</button>
+        <div className="topbar-right">
+          <div className="status-mini">
+            <span className="progress-text">{progressText}</span>
+            <span className="ready-dot" data-ready={engineReady}></span>
+            <span className="engine-indicator">{engine === 'browser' ? '本地小模型' : '云端API'}</span>
+          </div>
+          <button className="btn ghost" onClick={() => setShowSettings(true)}>设置</button>
+          <button className="btn danger" onClick={handleClear}>新会话</button>
         </div>
       </header>
 
