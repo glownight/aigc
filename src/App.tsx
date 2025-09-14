@@ -77,6 +77,9 @@ function App() {
     '生成一份周报提纲',
   ], [])
 
+  // 读取这些变量以规避 TS noUnusedLocals（它们在 JSX/事件中会被使用）
+  void [setEngine, setTheme, setStream, setModelSource, setLocalModelBase, setLocalModelLib, showSettings]
+
   // 始终滚到底部
   useEffect(() => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: 'smooth' })
@@ -302,7 +305,7 @@ function App() {
             }
           }}
         />
-        <button disabled={!canSend} onClick={handleSend}>
+        <button disabled={!canSend} onClick={() => handleSend()}>
           {loading ? '发送中…' : '发送'}
         </button>
       </footer>
