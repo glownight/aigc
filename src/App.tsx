@@ -68,6 +68,14 @@ function App() {
 
   const [loading, setLoading] = useState(false)
   const listRef = useRef<HTMLDivElement>(null)
+  // Kimi风格：设置弹窗与建议卡片
+  const [showSettings, setShowSettings] = useState(false)
+  const suggestions = useMemo(() => [
+    '介绍一下你自己',
+    '帮我总结这段文字',
+    '把这个段落润色得更专业',
+    '生成一份周报提纲',
+  ], [])
 
   // 始终滚到底部
   useEffect(() => {
@@ -171,9 +179,10 @@ function App() {
 
   const canSend = useMemo(() => input.trim().length > 0 && !loading, [input, loading])
 
-  async function handleSend() {
-    if (!canSend) return
-    const userMsg: Message = { id: uid(), role: 'user', content: input.trim() }
+  async function handleSend(overrideText?: string) {
+    const text = overrideText ?? input
+    if (!(text.trim().length > 0) || loading) return
+    const userMsg: Message = { id: uid(), role: 'user', content: text.trim() }
     setMessages((m) => [...m, userMsg])
     setInput('')
 
@@ -227,64 +236,23 @@ function App() {
   return (
     <div className={`app theme-${theme}`}>
       <header className="header">
-        <h1>AIGC 智能问答（纯前端）</h1>
+        <h1>Kimi 风格智能助手</h1>
         <div className="settings">
-          <label className="select">
-            主题
-            <select value={theme} onChange={(e) => setTheme(e.target.value as any)}>
-              <option value="blue">iPhone 15 蓝</option>
-              <option value="pink">iPhone 15 粉</option>
-              <option value="green">iPhone 15 绿</option>
-              <option value="yellow">iPhone 15 黄</option>
-              <option value="black">iPhone 15 黑</option>
-            </select>
-          </label>
-
-          <label className="select">
-            本地小模型
-            <select value={browserModel} onChange={(e) => setBrowserModel(e.target.value)}>
-              <option value="qwen2.5-0.5b-instruct-q4f32_1-MLC">Qwen2.5 0.5B Instruct（默认，最小）</option>
-            </select>
-          </label>
-
-          <label className="select">
-            模型来源
-            <select value={modelSource} onChange={(e) => setModelSource(e.target.value as any)}>
-              <option value="default">默认在线源</option>
-              <option value="local">本地内置（public/）</option>
-            </select>
-          </label>
-
-          {modelSource === 'local' && (
-            <>
-              <input
-                style={{ minWidth: 260 }}
-                value={localModelBase}
-                onChange={(e) => setLocalModelBase(e.target.value)}
-                placeholder="模型根路径，例如 /models/qwen2.5-0.5b-instruct-q4f32_1-MLC"
-                title="模型资源根目录 URL（放在 public 下会以 /models/... 访问）"
-              />
-              <input
-                style={{ minWidth: 260 }}
-                value={localModelLib}
-                onChange={(e) => setLocalModelLib(e.target.value)}
-                placeholder="模型 wasm 库路径，例如 /models/.../model.wasm"
-                title="模型对应的 wasm 库 URL（放在 public 下）"
-              />
-            </>
-          )}
-
-          <label className="stream">
-            <input type="checkbox" checked={!!stream} onChange={(e) => setStream(e.target.checked)} /> 流式
-          </label>
           <div className="progress">{progressText}</div>
           <div className="badge" aria-live="polite">状态：{engineReady ? '就绪' : '未就绪'}</div>
-
-          <button onClick={handleClear}>清空</button>
+          <button onClick={() => setShowSettings(true)}>设置</button>
+          <button onClick={handleClear}>新会话</button>
         </div>
       </header>
 
       <main className="chat">
+        {messages.filter((m) => m.role === 'user').length === 0 && (
+          <div className="suggestions">
+            {suggestions.map((s) => (
+              <button key={s} className="suggestion-card" onClick={() => handleSend(s)}>{s}</button>
+            ))}
+          </div>
+        )}
         <div className="list" ref={listRef}>
           {messages
             .filter((m) => m.role !== 'system')
