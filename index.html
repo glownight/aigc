@@ -1,13 +1,213 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    
+    <!-- 性能优化 -->
+    <meta name="robots" content="index, follow" />
+    <meta name="theme-color" content="#000000" />
+    
+    <!-- DNS 预解析 -->
+    <link rel="dns-prefetch" href="//cdn.jsdelivr.net" />
+    
+    <!-- 资源预加载提示 -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin />
+    
+    <!-- 首屏关键 CSS 内联 -->
+    <style>
+      /* 全局重置 */
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      
+      /* 首屏样式 */
+      body, html {
+        height: 100%;
+        overflow-x: hidden;
+      }
+      
+      #root {
+        min-height: 100vh;
+        background: #0f0f0f;
+        color: #c0c0c0;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        position: relative;
+      }
+      
+      /* 改进的加载指示器 */
+      .app-loading {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(135deg, #0f0f0f 0%, #1a1a1a 100%);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        z-index: 10000;
+        opacity: 1;
+        transition: opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      
+      .app-loading.fade-out {
+        opacity: 0;
+        pointer-events: none;
+      }
+      
+      .loading-spinner {
+        width: 48px;
+        height: 48px;
+        border: 3px solid rgba(255, 255, 255, 0.1);
+        border-top: 3px solid #6baed6;
+        border-radius: 50%;
+        animation: spin 1.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+        margin-bottom: 24px;
+      }
+      
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+      
+      .loading-text {
+        font-size: 15px;
+        color: rgba(255, 255, 255, 0.7);
+        text-align: center;
+        font-weight: 400;
+        letter-spacing: 0.5px;
+        max-width: 280px;
+        line-height: 1.4;
+      }
+      
+      .loading-progress {
+        margin-top: 16px;
+        width: 200px;
+        height: 2px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 1px;
+        overflow: hidden;
+      }
+      
+      .loading-progress-bar {
+        height: 100%;
+        background: linear-gradient(90deg, #6baed6, #4a9eff);
+        border-radius: 1px;
+        animation: progress 2s ease-in-out infinite;
+        transform: translateX(-100%);
+      }
+      
+      @keyframes progress {
+        0% { transform: translateX(-100%); }
+        50% { transform: translateX(0%); }
+        100% { transform: translateX(100%); }
+      }
+      
+      /* 响应式优化 */
+      @media (max-width: 768px) {
+        .loading-spinner {
+          width: 40px;
+          height: 40px;
+          margin-bottom: 20px;
+        }
+        .loading-text {
+          font-size: 14px;
+          max-width: 240px;
+          padding: 0 20px;
+        }
+        .loading-progress {
+          width: 160px;
+        }
+      }
+      
+      /* 预防布局偏移 */
+      .header {
+        height: 60px;
+      }
+      
+      .chat-container {
+        min-height: calc(100vh - 60px);
+      }
+    </style>
+    
     <title>智能助手</title>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!-- 高级加载指示器 -->
+      <div class="app-loading" id="app-loading">
+        <div class="loading-spinner"></div>
+        <div class="loading-text" id="loading-text">正在加载智能助手...</div>
+        <div class="loading-progress">
+          <div class="loading-progress-bar"></div>
+        </div>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
+    
+    <!-- 渐进式加载脚本 -->
+    <script>
+      // 加载阶段提示
+      const loadingTexts = [
+        '正在加载智能助手...',
+        '初始化系统组件...',
+        '准备用户界面...',
+        '即将完成...'
+      ];
+      
+      let currentTextIndex = 0;
+      const textElement = document.getElementById('loading-text');
+      
+      // 每1.5秒更新加载文字
+      const textInterval = setInterval(() => {
+        if (currentTextIndex < loadingTexts.length - 1) {
+          currentTextIndex++;
+          if (textElement) {
+            textElement.textContent = loadingTexts[currentTextIndex];
+          }
+        }
+      }, 1500);
+      
+      // 监听 DOM 内容加载完成
+      window.addEventListener('DOMContentLoaded', function() {
+        console.log('DOM 加载完成');
+        
+        // 等待 React 应用渲染完成
+        const checkAppReady = () => {
+          const appContent = document.querySelector('.app');
+          if (appContent) {
+            console.log('应用渲染完成，隐藏加载指示器');
+            clearInterval(textInterval);
+            const loadingElement = document.getElementById('app-loading');
+            if (loadingElement) {
+              loadingElement.classList.add('fade-out');
+              setTimeout(() => loadingElement.remove(), 600);
+            }
+          } else {
+            // 每100ms检查一次
+            setTimeout(checkAppReady, 100);
+          }
+        };
+        
+        // 开始检查应用状态
+        checkAppReady();
+      });
+      
+      // 备用方案：最多8秒后强制隐藏加载指示器
+      setTimeout(() => {
+        clearInterval(textInterval);
+        const loadingElement = document.getElementById('app-loading');
+        if (loadingElement && !loadingElement.classList.contains('fade-out')) {
+          console.log('超时强制隐藏加载指示器');
+          loadingElement.classList.add('fade-out');
+          setTimeout(() => loadingElement.remove(), 600);
+        }
+      }, 8000);
+    </script>
   </body>
 </html>

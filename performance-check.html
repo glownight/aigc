@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>性能测试页面</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .metrics {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .metric {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .metric:last-child {
+            border-bottom: none;
+        }
+        .good { color: #22c55e; }
+        .fair { color: #f59e0b; }
+        .poor { color: #ef4444; }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .loading { background: #fef3c7; color: #92400e; }
+        .success { background: #d1fae5; color: #065f46; }
+        .error { background: #fecaca; color: #991b1b; }
+    </style>
+</head>
+<body>
+    <h1>AIGC 应用性能测试</h1>
+    
+    <div id="status" class="status loading">
+        正在分析页面性能...
+    </div>
+    
+    <div class="metrics">
+        <h2>核心 Web Vitals</h2>
+        <div class="metric">
+            <span>首次内容绘制 (FCP)</span>
+            <span id="fcp">测量中...</span>
+        </div>
+        <div class="metric">
+            <span>最大内容绘制 (LCP)</span>
+            <span id="lcp">测量中...</span>
+        </div>
+        <div class="metric">
+            <span>累积布局偏移 (CLS)</span>
+            <span id="cls">测量中...</span>
+        </div>
+        <div class="metric">
+            <span>首次输入延迟 (FID)</span>
+            <span id="fid">等待用户交互...</span>
+        </div>
+    </div>
+
+    <div class="metrics">
+        <h2>加载时间</h2>
+        <div class="metric">
+            <span>DNS 查询</span>
+            <span id="dns">计算中...</span>
+        </div>
+        <div class="metric">
+            <span>TCP 连接</span>
+            <span id="tcp">计算中...</span>
+        </div>
+        <div class="metric">
+            <span>服务器响应</span>
+            <span id="server">计算中...</span>
+        </div>
+        <div class="metric">
+            <span>DOM 解析</span>
+            <span id="dom">计算中...</span>
+        </div>
+        <div class="metric">
+            <span>页面完全加载</span>
+            <span id="load">计算中...</span>
+        </div>
+    </div>
+
+    <div class="metrics">
+        <h2>资源加载</h2>
+        <div id="resources">
+            <div class="metric">
+                <span>正在分析资源...</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 检查是否有性能API支持
+        if (!window.performance || !window.PerformanceObserver) {
+            document.getElementById('status').innerHTML = '⚠️ 浏览器不支持性能测量API';
+            document.getElementById('status').className = 'status error';
+        } else {
+            measurePerformance();
+        }
+
+        function measurePerformance() {
+            // 获取基础性能数据
+            const navigation = performance.getEntriesByType('navigation')[0];
+            
+            // 计算各个阶段的时间
+            if (navigation) {
+                const dns = Math.round(navigation.domainLookupEnd - navigation.domainLookupStart);
+                const tcp = Math.round(navigation.connectEnd - navigation.connectStart);
+                const server = Math.round(navigation.responseEnd - navigation.requestStart);
+                const dom = Math.round(navigation.domContentLoadedEventEnd - navigation.domContentLoadedEventStart);
+                const load = Math.round(navigation.loadEventEnd - navigation.navigationStart);
+
+                document.getElementById('dns').textContent = `${dns}ms`;
+                document.getElementById('tcp').textContent = `${tcp}ms`;
+                document.getElementById('server').textContent = `${server}ms`;
+                document.getElementById('dom').textContent = `${dom}ms`;
+                document.getElementById('load').textContent = `${load}ms`;
+            }
+
+            // 观察核心 Web Vitals
+            observeWebVitals();
+            
+            // 分析资源加载
+            analyzeResources();
+            
+            // 更新状态
+            document.getElementById('status').innerHTML = '✅ 性能分析完成';
+            document.getElementById('status').className = 'status success';
+        }
+
+        function observeWebVitals() {
+            // FCP
+            new PerformanceObserver((list) => {
+                const fcp = list.getEntries()[0];
+                const value = Math.round(fcp.startTime);
+                document.getElementById('fcp').innerHTML = formatMetric(value, [1800, 3000]) + `${value}ms`;
+            }).observe({ entryTypes: ['paint'], buffered: true });
+
+            // LCP
+            new PerformanceObserver((list) => {
+                const entries = list.getEntries();
+                const lcp = entries[entries.length - 1];
+                const value = Math.round(lcp.startTime);
+                document.getElementById('lcp').innerHTML = formatMetric(value, [2500, 4000]) + `${value}ms`;
+            }).observe({ entryTypes: ['largest-contentful-paint'], buffered: true });
+
+            // CLS
+            new PerformanceObserver((list) => {
+                let cls = 0;
+                for (const entry of list.getEntries()) {
+                    if (!entry.hadRecentInput) {
+                        cls += entry.value;
+                    }
+                }
+                const value = Math.round(cls * 1000) / 1000;
+                document.getElementById('cls').innerHTML = formatMetric(value, [0.1, 0.25], true) + value;
+            }).observe({ entryTypes: ['layout-shift'], buffered: true });
+
+            // FID
+            new PerformanceObserver((list) => {
+                const fid = list.getEntries()[0];
+                const value = Math.round(fid.processingStart - fid.startTime);
+                document.getElementById('fid').innerHTML = formatMetric(value, [100, 300]) + `${value}ms`;
+            }).observe({ entryTypes: ['first-input'], buffered: true });
+        }
+
+        function formatMetric(value, thresholds, isReverse = false) {
+            let className;
+            if (isReverse) {
+                className = value <= thresholds[0] ? 'good' : value <= thresholds[1] ? 'fair' : 'poor';
+            } else {
+                className = value <= thresholds[0] ? 'good' : value <= thresholds[1] ? 'fair' : 'poor';
+            }
+            return `<span class="${className}">`;
+        }
+
+        function analyzeResources() {
+            const resources = performance.getEntriesByType('resource');
+            const resourcesDiv = document.getElementById('resources');
+            resourcesDiv.innerHTML = '';
+
+            // 分析不同类型的资源
+            const types = {};
+            let totalSize = 0;
+            let totalTime = 0;
+
+            resources.forEach(resource => {
+                const type = getResourceType(resource.name);
+                if (!types[type]) {
+                    types[type] = { count: 0, size: 0, time: 0 };
+                }
+                types[type].count++;
+                types[type].size += resource.transferSize || 0;
+                types[type].time += resource.duration;
+                totalSize += resource.transferSize || 0;
+                totalTime += resource.duration;
+            });
+
+            // 显示资源统计
+            Object.entries(types).forEach(([type, data]) => {
+                const avgTime = Math.round(data.time / data.count);
+                const sizeKB = Math.round(data.size / 1024);
+                
+                const div = document.createElement('div');
+                div.className = 'metric';
+                div.innerHTML = `
+                    <span>${type} (${data.count}个)</span>
+                    <span>${sizeKB}KB, 平均${avgTime}ms</span>
+                `;
+                resourcesDiv.appendChild(div);
+            });
+
+            // 总计
+            const div = document.createElement('div');
+            div.className = 'metric';
+            div.style.fontWeight = 'bold';
+            div.innerHTML = `
+                <span>总计</span>
+                <span>${Math.round(totalSize / 1024)}KB</span>
+            `;
+            resourcesDiv.appendChild(div);
+        }
+
+        function getResourceType(url) {
+            if (url.includes('.js')) return 'JavaScript';
+            if (url.includes('.css')) return 'CSS';
+            if (url.includes('.png') || url.includes('.jpg') || url.includes('.svg')) return '图片';
+            if (url.includes('.woff') || url.includes('.ttf')) return '字体';
+            return '其他';
+        }
+
+        // 5秒后尝试测试AIGC应用
+        setTimeout(() => {
+            if (window.location.href.includes('performance-check.html')) {
+                const link = document.createElement('div');
+                link.style.textAlign = 'center';
+                link.style.marginTop = '20px';
+                link.innerHTML = `
+                    <p><strong>性能测试建议：</strong></p>
+                    <p>• FCP < 1.8s 为优秀</p>
+                    <p>• LCP < 2.5s 为优秀</p>
+                    <p>• CLS < 0.1 为优秀</p>
+                    <p>• JavaScript 包应该 < 200KB</p>
+                    <br>
+                    <a href="http://localhost:3001" target="_blank" style="
+                        display: inline-block;
+                        padding: 10px 20px;
+                        background: #3b82f6;
+                        color: white;
+                        text-decoration: none;
+                        border-radius: 4px;
+                        ">测试生产版本</a>
+                `;
+                document.body.appendChild(link);
+            }
+        }, 2000);
+    </script>
+</body>
+</html>

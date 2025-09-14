@@ -1,5 +1,13 @@
-// 预加载 web-llm 模块，加快初始化（在页面 JS 加载后立即开始请求模块资源）
-const webllmModulePromise = import("@mlc-ai/web-llm");
+// 懒加载 web-llm 模块 - 只在真正需要时加载
+let webllmModulePromise: Promise<any> | null = null;
+
+const loadWebLLMModule = async () => {
+  if (!webllmModulePromise) {
+    console.log("开始按需加载 WebLLM 模块...");
+    webllmModulePromise = import("@mlc-ai/web-llm");
+  }
+  return webllmModulePromise;
+};
 // 在全局保存一个引擎单例，避免在 HMR/路由切换/二次进入页面时重复初始化
 const __g: any = globalThis as any;
 if (!__g.__mlc_singleton) {
@@ -234,6 +242,7 @@ function App() {
   };
   const [engineReady, setEngineReady] = useState(false);
   const [progressText, setProgressText] = useState("");
+  const [downloadPaused, setDownloadPaused] = useState(false); // 下载暂停状态
 
   const [loading, setLoading] = useState(false);
   const [abortController, setAbortController] =
@@ -289,7 +298,13 @@ function App() {
   // 启动时强制本地小模型（覆盖旧的 localStorage 值）并立即初始化
   useEffect(() => {
     // 不再强制为 browser，允许 remote
-  }, []);
+    // 添加首页加载优化提示
+    if (engine === "browser" && !engineReady) {
+      setProgressText(
+        "首次使用需要下载AI模型缓存（约234MB），这是一次性操作。后续访问将秒开！"
+      );
+    }
+  }, [engine, engineReady]);
 
   // 初始化/重建 web-llm 引擎
   useEffect(() => {
@@ -297,12 +312,19 @@ function App() {
       engineRef.current = null;
       setEngineReady(false);
       setProgressText("");
+      setDownloadPaused(false);
       return;
     }
+
+    // 如果下载被暂停，不启动初始化
+    if (downloadPaused) {
+      return;
+    }
+
     let cancelled = false;
     setEngineReady(false);
     setProgressText(
-      "准备加载本地模型…（首次会下载较大文件，请耐心等待，二次打开将使用缓存）"
+      "首次下载会要约234MB数据，请耐心等待。后续使用将会非常快速！"
     );
     (async () => {
       try {
@@ -313,7 +335,7 @@ function App() {
         ) {
           engineRef.current = __g.__mlc_singleton.engine;
           setEngineReady(true);
-          setProgressText("模型已就绪（复用缓存实例）。");
+          setProgressText("模型已就绪（复用缓存实例）");
           return;
         }
         // 如果正在创建，等待同一个 Promise，避免并行创建
@@ -328,15 +350,40 @@ function App() {
           return;
         }
 
-        const mod = await webllmModulePromise;
+        // 确保 web-llm 模块在需要时才加载
+        setProgressText("正在加载 AI 模块...");
+        const mod = await loadWebLLMModule();
         const { CreateMLCEngine } = mod as any;
 
         // 构建引擎配置
         const engineConfig: any = {
           initProgressCallback: (report: any) => {
             if (cancelled) return;
-            const t = report?.text || JSON.stringify(report);
-            setProgressText(t);
+
+            // 解析进度报告
+            let displayText = report?.text || JSON.stringify(report);
+
+            // 优化进度显示
+            if (displayText.includes("Fetching param cached")) {
+              const match = displayText.match(/(\d+)MB.*?(\d+)%.*?(\d+) sec/);
+              if (match) {
+                const [, mb, percent, seconds] = match;
+                displayText = `首次下载模型数据: ${mb}MB (${percent}%) - 已用时${seconds}秒`;
+
+                // 添加鼓励性提示
+                if (parseInt(percent) > 50) {
+                  displayText += " - 即将完成！";
+                } else if (parseInt(percent) > 20) {
+                  displayText += " - 进展顺利";
+                }
+              }
+            } else if (displayText.includes("Loading model")) {
+              displayText = "正在加载模型文件...";
+            } else if (displayText.includes("Compiling")) {
+              displayText = "正在编译模型，马上就好...";
+            }
+
+            setProgressText(displayText);
           },
         };
 
@@ -362,7 +409,7 @@ function App() {
     return () => {
       cancelled = true;
     };
-  }, [engine, browserModel]);
+  }, [engine, browserModel, downloadPaused]); // 添加 downloadPaused 依赖
 
   const canSend = useMemo(
     () => input.trim().length > 0 && !loading && !isProcessing && !engineBusy,
@@ -492,7 +539,8 @@ function App() {
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
       // 重新创建引擎
-      const mod = await webllmModulePromise;
+      // 确保 web-llm 模块已加载
+      const mod = await loadWebLLMModule();
       const { CreateMLCEngine } = mod as any;
 
       const engineConfig: any = {
@@ -535,6 +583,17 @@ function App() {
       forceEngineReset
     )
       return;
+
+    // 如果下载被暂停，现在恢复下载
+    if (downloadPaused) {
+      setDownloadPaused(false);
+      setProgressText("正在恢复下载，请稍候...");
+      // 触发重新初始化，传递文本给后续操作
+      setTimeout(() => {
+        handleSend(text, currentRetryCount);
+      }, 1000);
+      return;
+    }
 
     console.log(
       `[handleSend] 开始发送请求... (第${currentRetryCount + 1}次尝试)`
@@ -983,7 +1042,42 @@ function App() {
         </div>
         <div className="topbar-right">
           <div className="status-mini">
-            <span className="progress-text">{progressText}</span>
+            <div className="progress-container">
+              <span className="progress-text">{progressText}</span>
+
+              {/* 进度条 */}
+              {progressText.includes("%") && (
+                <div className="progress-bar-mini">
+                  <div
+                    className="progress-fill"
+                    style={{
+                      width: `${progressText.match(/(\d+)%/)?.[1] || 0}%`,
+                    }}
+                  ></div>
+                </div>
+              )}
+
+              {/* 仅在首次下载且非移动端时显示操作按钮 */}
+              {!engineReady &&
+                engine === "browser" &&
+                progressText.includes("首次") && (
+                  <div className="loading-tips-compact">
+                    <div className="quick-actions">
+                      <button
+                        className="btn-mini ghost"
+                        onClick={() => {
+                          setDownloadPaused(true);
+                          setProgressText("已暂停，发送消息时自动继续");
+                        }}
+                        title="暂停下载"
+                      >
+                        暂停
+                      </button>
+                    </div>
+                  </div>
+                )}
+            </div>
+
             <span className="ready-dot" data-ready={engineReady}></span>
             <span className="engine-indicator">{browserModel}</span>
           </div>
