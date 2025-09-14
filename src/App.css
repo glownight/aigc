@@ -122,7 +122,8 @@ body {
 }
 
 .progress-text {
-  max-width: 200px;
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -478,7 +479,12 @@ button:focus-visible {
   }
   
   .status-mini {
-    display: none;
+    font-size: 12px;
+    gap: 6px;
+  }
+  
+  .progress-text {
+    max-width: 150px;
   }
   
   .suggestions {

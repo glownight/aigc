@@ -129,85 +129,95 @@ function App() {
 
   // 初始化/重建 web-llm 引擎
   useEffect(() => {
-    if (engine === 'remote') {
+    if (engine === "remote") {
       // 远程API无需初始化
-      engineRef.current = null
-      setEngineReady(true)
-      setProgressText('云端 API 已就绪')
-      return
-    } else if (engine !== 'browser') {
-      engineRef.current = null
-      setEngineReady(false)
-      setProgressText('')
-      return
+      engineRef.current = null;
+      setEngineReady(true);
+      setProgressText("云端 API 已就绪");
+      return;
+    } else if (engine !== "browser") {
+      engineRef.current = null;
+      setEngineReady(false);
+      setProgressText("");
+      return;
     }
-    let cancelled = false
-    setEngineReady(false)
+    let cancelled = false;
+    setEngineReady(false);
     setProgressText(
-      modelSource === 'local'
-        ? '从本地内置模型源加载…（首次访问会拷贝到浏览器缓存）'
-        : '准备加载本地模型…（首次会下载较大文件，请耐心等待，二次打开将使用缓存）'
-    )
-
-    ;(async () => {
+      modelSource === "local"
+        ? "从本地内置模型源加载…（首次访问会拷贝到浏览器缓存）"
+        : "准备加载本地模型…（首次会下载较大文件，请耐心等待，二次打开将使用缓存）"
+    );
+    (async () => {
       try {
         // 若已有单例且模型一致，直接复用，几乎无等待
-        if (__g.__mlc_singleton.engine && __g.__mlc_singleton.model === browserModel) {
-          engineRef.current = __g.__mlc_singleton.engine
-          setEngineReady(true)
-          setProgressText('模型已就绪（复用缓存实例）。')
-          return
+        if (
+          __g.__mlc_singleton.engine &&
+          __g.__mlc_singleton.model === browserModel
+        ) {
+          engineRef.current = __g.__mlc_singleton.engine;
+          setEngineReady(true);
+          setProgressText("模型已就绪（复用缓存实例）。");
+          return;
         }
         // 如果正在创建，等待同一个 Promise，避免并行创建
         if (__g.__mlc_singleton.creating) {
-          setProgressText('模型正在准备（共享创建过程）…')
-          const eng = await __g.__mlc_singleton.creating
+          setProgressText("模型正在准备（共享创建过程）…");
+          const eng = await __g.__mlc_singleton.creating;
           if (!cancelled) {
-            engineRef.current = eng
-            setEngineReady(true)
-            setProgressText('模型已就绪。')
+            engineRef.current = eng;
+            setEngineReady(true);
+            setProgressText("模型已就绪。");
           }
-          return
+          return;
         }
 
-        const mod = await webllmModulePromise
-        const { CreateMLCEngine } = mod as any
+        const mod = await webllmModulePromise;
+        const { CreateMLCEngine } = mod as any;
 
         // 在使用“本地内置路径”时做一次前置校验，路径无效则自动回退到默认在线源并提示
-        if (modelSource === 'local') {
+        if (modelSource === "local") {
           const ok = await (async () => {
             try {
-              const baseUrl = new URL(localModelBase, location.origin).toString()
-              const libUrl = new URL(localModelLib, location.origin).toString()
+              const baseUrl = new URL(
+                localModelBase,
+                location.origin
+              ).toString();
+              const libUrl = new URL(localModelLib, location.origin).toString();
               // 简短可中止的 HEAD 探测，避免长时间卡住
-              const ac = new AbortController()
-              const timer = setTimeout(() => ac.abort(), 3000)
-              const r = await fetch(libUrl, { method: 'HEAD', signal: ac.signal })
-              clearTimeout(timer)
+              const ac = new AbortController();
+              const timer = setTimeout(() => ac.abort(), 3000);
+              const r = await fetch(libUrl, {
+                method: "HEAD",
+                signal: ac.signal,
+              });
+              clearTimeout(timer);
               // 200-299 视为可用
-              return r.ok && !!baseUrl && !!libUrl
+              return r.ok && !!baseUrl && !!libUrl;
             } catch {
-              return false
+              return false;
             }
-          })()
+          })();
 
           if (!ok) {
             if (!cancelled) {
-              setProgressText('检测到本地模型路径无效，已自动回退到默认在线源。')
-              setModelSource('default')
+              setProgressText(
+                "检测到本地模型路径无效，已自动回退到默认在线源。"
+              );
+              setModelSource("default");
             }
-            return
+            return;
           }
         }
 
         // 构建引擎配置（将进度回调与可选 appConfig 合并到第二个参数）
         const engineConfig: any = {
           initProgressCallback: (report: any) => {
-            if (cancelled) return
-            const t = report?.text || JSON.stringify(report)
-            setProgressText(t)
+            if (cancelled) return;
+            const t = report?.text || JSON.stringify(report);
+            setProgressText(t);
           },
-          ...(modelSource === 'local'
+          ...(modelSource === "local"
             ? {
                 appConfig: {
                   model_list: [
@@ -220,31 +230,31 @@ function App() {
                 },
               }
             : {}),
-        }
+        };
 
-        const creating = CreateMLCEngine(browserModel, engineConfig)
-        __g.__mlc_singleton.creating = creating
-        const eng = await creating
+        const creating = CreateMLCEngine(browserModel, engineConfig);
+        __g.__mlc_singleton.creating = creating;
+        const eng = await creating;
         if (!cancelled) {
-          __g.__mlc_singleton.engine = eng
-          __g.__mlc_singleton.model = browserModel
-          __g.__mlc_singleton.creating = null
-          engineRef.current = eng
-          setEngineReady(true)
-          setProgressText('模型已就绪，可以开始对话。')
+          __g.__mlc_singleton.engine = eng;
+          __g.__mlc_singleton.model = browserModel;
+          __g.__mlc_singleton.creating = null;
+          engineRef.current = eng;
+          setEngineReady(true);
+          setProgressText("模型已就绪，可以开始对话。");
         }
       } catch (e: any) {
-        __g.__mlc_singleton.creating = null
+        __g.__mlc_singleton.creating = null;
         if (!cancelled) {
-          setProgressText(`初始化失败：${e?.message || e}`)
+          setProgressText(`初始化失败：${e?.message || e}`);
         }
       }
-    })()
+    })();
 
     return () => {
-      cancelled = true
-    }
-  }, [engine, browserModel, modelSource, localModelBase, localModelLib])
+      cancelled = true;
+    };
+  }, [engine, browserModel, modelSource, localModelBase, localModelLib]);
 
   const canSend = useMemo(
     () => input.trim().length > 0 && !loading,
@@ -411,7 +421,10 @@ function App() {
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h2 className="modal-title">设置</h2>
-              <button className="btn ghost" onClick={() => setShowSettings(false)}>
+              <button
+                className="btn ghost"
+                onClick={() => setShowSettings(false)}
+              >
                 ✕
               </button>
             </div>
@@ -426,7 +439,7 @@ function App() {
                   <option value="remote">云端API</option>
                 </select>
               </div>
-
+              {/* 
               <div className="field">
                 <label>主题</label>
                 <select
@@ -439,7 +452,7 @@ function App() {
                   <option value="yellow">黄色</option>
                   <option value="black">黑色</option>
                 </select>
-              </div>
+              </div> */}
 
               {engine === "browser" && (
                 <>
