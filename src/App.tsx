@@ -50,14 +50,6 @@ function App() {
   const { sessionId } = useParams<{ sessionId?: string }>();
   const navigate = useNavigate();
 
-  const [messages, setMessages] = useState<Message[]>([
-    { id: uid(), role: "system", content: "你是一个有帮助的智能助手。" },
-    {
-      id: uid(),
-      role: "assistant",
-      content: "你好，我可以为你提供智能问答服务～",
-    },
-  ]);
   const [input, setInput] = useState("");
 
   // 会话管理
@@ -127,7 +119,15 @@ function App() {
   );
 
   // 使用当前会话的消息，如果没有当前会话则使用默认消息
-  const sessionMessages = currentSession?.messages || messages;
+  const defaultMessages: Message[] = [
+    { id: uid(), role: "system", content: "你是一个有帮助的智能助手。" },
+    {
+      id: uid(),
+      role: "assistant",
+      content: "你好，我可以为你提供智能问答服务～",
+    },
+  ];
+  const sessionMessages = currentSession?.messages || defaultMessages;
 
   // 强制仅使用"浏览器小模型"
   const [engine, setEngine] = useLocalStorage<EngineMode>(
@@ -240,7 +240,7 @@ function App() {
     useState<AbortController | null>(null);
   const [isProcessing, setIsProcessing] = useState(false); // 防止重复请求
   const [engineBusy, setEngineBusy] = useState(false); // 引擎忙碌状态
-  const [forceEngineReset, setForceEngineReset] = useState(false); // 强制引擎重置
+  const [forceEngineReset] = useState(false); // 强制引擎重置
   const listRef = useRef<HTMLDivElement>(null);
   // Kimi风格：设置弹窗与建议卡片
   const [showSettings, setShowSettings] = useState(false);
@@ -411,16 +411,21 @@ function App() {
     }
   }
 
-  async function handleSend(overrideText?: string) {
+  async function handleSend(overrideText?: string, retryCount?: number): Promise<void> {
     const text = overrideText ?? input;
+    const currentRetryCount = retryCount || 0;
     if (!(text.trim().length > 0) || loading || isProcessing || engineBusy || forceEngineReset) return;
     
-    console.log('[handleSend] 开始发送请求...');
+    console.log(`[handleSend] 开始发送请求... (第${currentRetryCount + 1}次尝试)`);
     
     const userMsg: Message = { id: uid(), role: "user", content: text.trim() };
     const newMessages = [...sessionMessages, userMsg];
-    updateCurrentSession(newMessages);
-    setInput("");
+    
+    // 只有在第一次尝试时才更新会话和清空输入
+    if (currentRetryCount === 0) {
+      updateCurrentSession(newMessages);
+      setInput("");
+    }
 
     // 设置所有保护状态
     setIsProcessing(true);
@@ -453,7 +458,7 @@ function App() {
     try {
       const sendMessages = sessionMessages
         .concat(userMsg)
-        .map(({ role, content }) => ({ role, content }));
+        .map(({ role, content }: { role: Role; content: string }) => ({ role, content }));
 
       const eng = engineRef.current;
       const assistantId = uid();
@@ -489,11 +494,32 @@ function App() {
       } catch (error) {
         console.error('[handleSend] 创建流式请求失败:', error);
         
-        // 如果是超时错误，尝试重新初始化引擎
-        if (error instanceof Error && error.message && error.message.includes('超时')) {
-          console.log('[handleSend] 检测到引擎超时，尝试强制重新初始化...');
+        // 如果是超时错误且重试次数少于2次，自动重试
+        if (error instanceof Error && error.message.includes('超时') && currentRetryCount < 2) {
+          console.log(`[handleSend] 检测到引擎超时，开始第${currentRetryCount + 2}次自动重试...`);
+          
+          // 显示重试提示
+          const retryMsg: Message = {
+            id: uid(),
+            role: "assistant" as Role,
+            content: "检测到引擎异常，正在自动重试...",
+          };
+          updateCurrentSession([...newMessages, retryMsg]);
+          
+          // 强制重新初始化引擎
           await forceEngineReinit();
-          throw new Error('引擎超时，已重新初始化，请重试');
+          
+          // 清理状态并重试
+          setLoading(false);
+          setAbortController(null);
+          setIsProcessing(false);
+          setEngineBusy(false);
+          
+          // 等待一段时间让引擎稳定，然后重试
+          setTimeout(() => {
+            handleSend(text, currentRetryCount + 1);
+          }, 1000);
+          return;
         }
         
         throw error;
@@ -610,7 +636,7 @@ function App() {
       // 清理未完成的空AI消息
       if (currentSession) {
         const cleanedMessages = sessionMessages.filter(
-          (m) => !(m.role === "assistant" && m.content.trim() === "")
+          (m: Message) => !(m.role === "assistant" && m.content.trim() === "")
         );
         if (cleanedMessages.length !== sessionMessages.length) {
           console.log('[handleStop] 清理了空的AI消息');
@@ -845,7 +871,7 @@ function App() {
       )}
 
       <main className="chat">
-        {sessionMessages.filter((m) => m.role === "user").length === 0 && (
+        {sessionMessages.filter((m: Message) => m.role === "user").length === 0 && (
           <div className="suggestions">
             {suggestions.map((s) => (
               <button
@@ -860,8 +886,8 @@ function App() {
         )}
         <div className="list" ref={listRef}>
           {sessionMessages
-            .filter((m) => m.role !== "system")
-            .map((m) => (
+            .filter((m: Message) => m.role !== "system")
+            .map((m: Message) => (
               <div key={m.id} className={`msg ${m.role}`}>
                 <div className="role">{m.role === "user" ? "我" : "AI"}</div>
                 <div className="bubble">
