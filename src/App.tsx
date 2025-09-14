@@ -241,6 +241,14 @@ function App() {
   const [isProcessing, setIsProcessing] = useState(false); // 防止重复请求
   const [engineBusy, setEngineBusy] = useState(false); // 引擎忙碌状态
   const [forceEngineReset] = useState(false); // 强制引擎重置
+
+  // 流式处理优化配置
+  const STREAM_CONFIG = {
+    maxLength: 20000, // 最大回答长度
+    duplicateThreshold: 0.8, // 重复检测阈值
+    qualityCheckInterval: 10, // 每N个chunk检查一次质量
+    minChunkLength: 1, // 最小有效chunk长度
+  };
   const listRef = useRef<HTMLDivElement>(null);
   // Kimi风格：设置弹窗与建议卡片
   const [showSettings, setShowSettings] = useState(false);
@@ -361,10 +369,112 @@ function App() {
     [input, loading, isProcessing, engineBusy]
   );
 
-  // 强制重新初始化引擎的函数
+  // 流式处理优化函数
+  const detectDuplicate = (
+    text: string,
+    newChunk: string,
+    threshold: number = STREAM_CONFIG.duplicateThreshold
+  ): boolean => {
+    if (!text || !newChunk || newChunk.length < 3) return false;
+
+    // 检查最后50个字符中是否包含重复内容
+    const recentText = text.slice(-50);
+    const similarity = calculateSimilarity(recentText, newChunk);
+
+    return similarity > threshold;
+  };
+
+  const calculateSimilarity = (str1: string, str2: string): number => {
+    if (!str1 || !str2) return 0;
+
+    const longer = str1.length > str2.length ? str1 : str2;
+    const shorter = str1.length > str2.length ? str2 : str1;
+
+    if (longer.length === 0) return 1;
+
+    const distance = levenshteinDistance(longer, shorter);
+    return (longer.length - distance) / longer.length;
+  };
+
+  const levenshteinDistance = (str1: string, str2: string): number => {
+    const matrix = Array(str2.length + 1)
+      .fill(null)
+      .map(() => Array(str1.length + 1).fill(null));
+
+    for (let i = 0; i <= str1.length; i++) matrix[0][i] = i;
+    for (let j = 0; j <= str2.length; j++) matrix[j][0] = j;
+
+    for (let j = 1; j <= str2.length; j++) {
+      for (let i = 1; i <= str1.length; i++) {
+        const indicator = str1[i - 1] === str2[j - 1] ? 0 : 1;
+        matrix[j][i] = Math.min(
+          matrix[j][i - 1] + 1,
+          matrix[j - 1][i] + 1,
+          matrix[j - 1][i - 1] + indicator
+        );
+      }
+    }
+
+    return matrix[str2.length][str1.length];
+  };
+
+  const checkContentQuality = (
+    content: string
+  ): { isValid: boolean; reason?: string } => {
+    // 检查内容质量
+    if (!content || content.trim().length === 0) {
+      return { isValid: false, reason: "内容为空" };
+    }
+
+    // 检查是否包含太多重复字符
+    const repeatPattern = /(.)\1{5,}/g;
+    if (repeatPattern.test(content)) {
+      return { isValid: false, reason: "内容包含过多重复字符" };
+    }
+
+    // 检查是否包含异常字符
+    const invalidChars = /[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g;
+    if (invalidChars.test(content)) {
+      return { isValid: false, reason: "内容包含异常字符" };
+    }
+
+    return { isValid: true };
+  };
+
+  const truncateAtSentence = (text: string, maxLength: number): string => {
+    if (text.length <= maxLength) return text;
+
+    // 在句子边界截断
+    const truncated = text.substring(0, maxLength);
+    const sentenceEnd = /[\u3002\uff01\uff1f\.\!\?]\s*/g;
+    let lastSentenceEnd = -1;
+    let match;
+
+    while ((match = sentenceEnd.exec(truncated)) !== null) {
+      lastSentenceEnd = match.index + match[0].length;
+    }
+
+    if (lastSentenceEnd > maxLength * 0.7) {
+      return truncated.substring(0, lastSentenceEnd);
+    }
+
+    // 如果没有合适的句子边界，在词边界截断
+    const wordEnd = /\s+/g;
+    let lastWordEnd = -1;
+
+    while ((match = wordEnd.exec(truncated)) !== null) {
+      lastWordEnd = match.index;
+    }
+
+    if (lastWordEnd > maxLength * 0.8) {
+      return truncated.substring(0, lastWordEnd) + "...";
+    }
+
+    return truncated + "...";
+  };
   async function forceEngineReinit() {
-    console.log('[forceEngineReinit] 开始强制重新初始化引擎...');
-    
+    console.log("[forceEngineReinit] 开始强制重新初始化引擎...");
+
     try {
       // 清理全局单例
       if (__g.__mlc_singleton) {
@@ -372,55 +482,67 @@ function App() {
         __g.__mlc_singleton.model = "";
         __g.__mlc_singleton.creating = null;
       }
-      
+
       // 清理当前引擎引用
       engineRef.current = null;
       setEngineReady(false);
-      setProgressText('引擎重新初始化中...');
-      
+      setProgressText("引擎重新初始化中...");
+
       // 等待一段时间让引擎完全清理
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
       // 重新创建引擎
       const mod = await webllmModulePromise;
       const { CreateMLCEngine } = mod as any;
-      
+
       const engineConfig: any = {
         initProgressCallback: (report: any) => {
           const t = report?.text || JSON.stringify(report);
           setProgressText(`重新初始化: ${t}`);
         },
       };
-      
+
       const creating = CreateMLCEngine(browserModel, engineConfig);
       __g.__mlc_singleton.creating = creating;
       const eng = await creating;
-      
+
       __g.__mlc_singleton.engine = eng;
       __g.__mlc_singleton.model = browserModel;
       __g.__mlc_singleton.creating = null;
       engineRef.current = eng;
       setEngineReady(true);
-      setProgressText('引擎重新初始化完成，可以开始对话。');
-      
-      console.log('[forceEngineReinit] 引擎强制重新初始化完成');
+      setProgressText("引擎重新初始化完成，可以开始对话。");
+
+      console.log("[forceEngineReinit] 引擎强制重新初始化完成");
     } catch (e) {
-      console.error('[forceEngineReinit] 强制重新初始化失败:', e);
-      setProgressText('引擎重新初始化失败，请刷新页面。');
+      console.error("[forceEngineReinit] 强制重新初始化失败:", e);
+      setProgressText("引擎重新初始化失败，请刷新页面。");
       throw e;
     }
   }
 
-  async function handleSend(overrideText?: string, retryCount?: number): Promise<void> {
+  async function handleSend(
+    overrideText?: string,
+    retryCount?: number
+  ): Promise<void> {
     const text = overrideText ?? input;
     const currentRetryCount = retryCount || 0;
-    if (!(text.trim().length > 0) || loading || isProcessing || engineBusy || forceEngineReset) return;
-    
-    console.log(`[handleSend] 开始发送请求... (第${currentRetryCount + 1}次尝试)`);
-    
+    if (
+      !(text.trim().length > 0) ||
+      loading ||
+      isProcessing ||
+      engineBusy ||
+      forceEngineReset
+    )
+      return;
+
+    console.log(
+      `[handleSend] 开始发送请求... (第${currentRetryCount + 1}次尝试)`
+    );
+
     const userMsg: Message = { id: uid(), role: "user", content: text.trim() };
     const newMessages = [...sessionMessages, userMsg];
-    
+
     // 只有在第一次尝试时才更新会话和清空输入
     if (currentRetryCount === 0) {
       updateCurrentSession(newMessages);
@@ -431,7 +553,7 @@ function App() {
     setIsProcessing(true);
     setLoading(true);
     setEngineBusy(true);
-    
+
     // 创建新的AbortController
     const controller = new AbortController();
     setAbortController(controller);
@@ -444,7 +566,7 @@ function App() {
         content: "本地模型初始化中，请稍候…",
       };
       updateCurrentSession([...newMessages, waitingMsg]);
-      
+
       // 清理状态
       setLoading(false);
       setAbortController(null);
@@ -458,7 +580,10 @@ function App() {
     try {
       const sendMessages = sessionMessages
         .concat(userMsg)
-        .map(({ role, content }: { role: Role; content: string }) => ({ role, content }));
+        .map(({ role, content }: { role: Role; content: string }) => ({
+          role,
+          content,
+        }));
 
       const eng = engineRef.current;
       const assistantId = uid();
@@ -466,38 +591,52 @@ function App() {
       let hasStartedStreaming = false;
       let streamResp;
 
-      console.log('[handleSend] 创建流式请求...');
-      
+      console.log("[handleSend] 创建流式请求...");
+
       try {
         // 强制等待一小段时间，确保引擎状态稳定
-        await new Promise(resolve => setTimeout(resolve, 100));
-        
-        console.log('[handleSend] 调用引擎API...');
-        
+        await new Promise((resolve) => setTimeout(resolve, 100));
+
+        console.log("[handleSend] 调用引擎API...");
+
         // 添加超时机制，防止引擎无限等待
         const timeoutPromise = new Promise((_, reject) => {
           setTimeout(() => {
-            reject(new Error('引擎请求超时，可能需要重新初始化引擎'));
+            reject(new Error("引擎请求超时，可能需要重新初始化引擎"));
           }, 15000); // 15秒超时
         });
-        
+
         const createPromise = eng.chat.completions.create({
           messages: sendMessages,
           stream: true,
         });
-        
+
         // 使用Promise.race实现超时机制
         streamResp = await Promise.race([createPromise, timeoutPromise]);
-        
-        console.log('[handleSend] 流式请求创建成功，返回对象:', typeof streamResp);
-        console.log('[handleSend] 检查流式响应是否为异步迭代器:', streamResp && typeof streamResp[Symbol.asyncIterator] === 'function');
+
+        console.log(
+          "[handleSend] 流式请求创建成功，返回对象:",
+          typeof streamResp
+        );
+        console.log(
+          "[handleSend] 检查流式响应是否为异步迭代器:",
+          streamResp && typeof streamResp[Symbol.asyncIterator] === "function"
+        );
       } catch (error) {
-        console.error('[handleSend] 创建流式请求失败:', error);
-        
+        console.error("[handleSend] 创建流式请求失败:", error);
+
         // 如果是超时错误且重试次数少于2次，自动重试
-        if (error instanceof Error && error.message.includes('超时') && currentRetryCount < 2) {
-          console.log(`[handleSend] 检测到引擎超时，开始第${currentRetryCount + 2}次自动重试...`);
-          
+        if (
+          error instanceof Error &&
+          error.message.includes("超时") &&
+          currentRetryCount < 2
+        ) {
+          console.log(
+            `[handleSend] 检测到引擎超时，开始第${
+              currentRetryCount + 2
+            }次自动重试...`
+          );
+
           // 显示重试提示
           const retryMsg: Message = {
             id: uid(),
@@ -505,47 +644,118 @@ function App() {
             content: "检测到引擎异常，正在自动重试...",
           };
           updateCurrentSession([...newMessages, retryMsg]);
-          
+
           // 强制重新初始化引擎
           await forceEngineReinit();
-          
+
           // 清理状态并重试
           setLoading(false);
           setAbortController(null);
           setIsProcessing(false);
           setEngineBusy(false);
-          
+
           // 等待一段时间让引擎稳定，然后重试
           setTimeout(() => {
             handleSend(text, currentRetryCount + 1);
           }, 1000);
           return;
         }
-        
+
         throw error;
       }
 
       try {
-        console.log('[handleSend] 开始处理流式响应，准备迭代...');
-        
+        console.log("[handleSend] 开始处理流式响应，准备迭代...");
+
         let chunkCount = 0;
+        let totalLength = 0;
+        let lastContent = "";
+        let duplicateCount = 0;
+        let isQualityChecked = true;
+
         for await (const chunk of streamResp) {
           chunkCount++;
           console.log(`[handleSend] 接收到第${chunkCount}个chunk:`, chunk);
-          
+
           // 检查是否被中止
           if (controller.signal.aborted) {
-            console.log('[handleSend] 检测到中止信号，退出处理');
+            console.log("[handleSend] 检测到中止信号，退出处理");
             break;
           }
 
           const delta: string = chunk?.choices?.[0]?.delta?.content || "";
           console.log(`[handleSend] 解析得到delta内容: "${delta}"`);
-          
-          if (delta) {
-            // 只有在第一次接收到内容时才创建 assistant 消息
+
+          if (delta && delta.length >= STREAM_CONFIG.minChunkLength) {
+            // 检查长度限制
+            if (totalLength + delta.length > STREAM_CONFIG.maxLength) {
+              console.log("[handleSend] 达到最大长度限制，停止接收");
+
+              // 在适当位置截断
+              const remainingLength = STREAM_CONFIG.maxLength - totalLength;
+              if (remainingLength > 10) {
+                const truncatedDelta = truncateAtSentence(
+                  delta,
+                  remainingLength
+                );
+                if (truncatedDelta.length > 5) {
+                  // 更新最后一个有效内容
+                  if (!hasStartedStreaming) {
+                    assistantMessage = {
+                      id: assistantId,
+                      role: "assistant" as Role,
+                      content: truncatedDelta,
+                    };
+                    const messagesWithAssistant = [
+                      ...newMessages,
+                      assistantMessage,
+                    ];
+                    updateCurrentSession(messagesWithAssistant);
+                    hasStartedStreaming = true;
+                  } else {
+                    assistantMessage!.content += truncatedDelta;
+                    const currentMessages = [...newMessages, assistantMessage!];
+                    updateCurrentSession(currentMessages);
+                  }
+                }
+              }
+              break;
+            }
+
+            // 重复检测
+            if (detectDuplicate(lastContent, delta)) {
+              duplicateCount++;
+              console.log(
+                `[handleSend] 检测到重复内容 (${duplicateCount}次): "${delta}"`
+              );
+
+              // 如果连续3次重复，停止接收
+              if (duplicateCount >= 3) {
+                console.log("[handleSend] 连续重复内容过多，停止接收");
+                break;
+              }
+              continue; // 跳过这个重复的chunk
+            } else {
+              duplicateCount = 0; // 重置重复计数
+            }
+
+            // 质量检查（每N个chunk检查一次）
+            if (chunkCount % STREAM_CONFIG.qualityCheckInterval === 0) {
+              const currentContent = (assistantMessage?.content || "") + delta;
+              const qualityCheck = checkContentQuality(currentContent);
+
+              if (!qualityCheck.isValid) {
+                console.log(
+                  `[handleSend] 内容质量检查失败: ${qualityCheck.reason}`
+                );
+                isQualityChecked = false;
+                break;
+              }
+            }
+
+            // 更新内容
             if (!hasStartedStreaming) {
-              console.log('[handleSend] 开始接收内容，创建助手消息');
+              console.log("[handleSend] 开始接收内容，创建助手消息");
               assistantMessage = {
                 id: assistantId,
                 role: "assistant" as Role,
@@ -560,30 +770,52 @@ function App() {
               const currentMessages = [...newMessages, assistantMessage!];
               updateCurrentSession(currentMessages);
             }
+
+            totalLength += delta.length;
+            lastContent = (assistantMessage?.content || "").slice(-100); // 保留最后100个字符用于重复检测
           }
         }
-        
-        console.log(`[handleSend] 流式处理完成，总共处理了${chunkCount}个chunk`);
+
+        // 最终质量检查
+        if (assistantMessage && isQualityChecked) {
+          const finalQualityCheck = checkContentQuality(
+            assistantMessage.content
+          );
+          if (!finalQualityCheck.isValid) {
+            console.log(
+              `[handleSend] 最终质量检查失败: ${finalQualityCheck.reason}`
+            );
+
+            // 更新为错误消息
+            assistantMessage.content = `回答内容质量检查失败（${finalQualityCheck.reason}），请重试。`;
+            const currentMessages = [...newMessages, assistantMessage];
+            updateCurrentSession(currentMessages);
+          }
+        }
+
+        console.log(
+          `[handleSend] 流式处理完成，总共处理了${chunkCount}个chunk，总长度${totalLength}字符`
+        );
       } finally {
         // 确保流式响应被正确关闭
         try {
           if (streamResp && streamResp.return) {
             await streamResp.return();
-            console.log('[handleSend] 流式响应已关闭');
+            console.log("[handleSend] 流式响应已关闭");
           }
         } catch (e) {
-          console.warn('[handleSend] 流式响应关闭时出错:', e);
+          console.warn("[handleSend] 流式响应关闭时出错:", e);
         }
-        
+
         // 强制等待引擎完全清理内部状态
-        await new Promise(resolve => setTimeout(resolve, 200));
+        await new Promise((resolve) => setTimeout(resolve, 200));
       }
     } catch (e: any) {
-      console.error('[handleSend] 请求处理出错:', e);
-      
+      console.error("[handleSend] 请求处理出错:", e);
+
       // 检查是否被中止
       if (controller.signal.aborted) {
-        console.log('[handleSend] 请求被中止，不显示错误消息');
+        console.log("[handleSend] 请求被中止，不显示错误消息");
         return;
       }
 
@@ -595,63 +827,65 @@ function App() {
       };
       updateCurrentSession([...newMessages, errorMsg]);
     } finally {
-      console.log('[handleSend] 清理状态...');
-      
+      console.log("[handleSend] 清理状态...");
+
       // 立即清理UI状态
       setLoading(false);
       setAbortController(null);
-      
+
       // 延迟重置处理状态，确保所有异步操作完成
       setTimeout(() => {
         setIsProcessing(false);
-        console.log('[handleSend] 处理状态已重置');
+        console.log("[handleSend] 处理状态已重置");
       }, 300);
-      
+
       // 延迟更长时间重置引擎忙碌状态，确保引擎完全就绪
       setTimeout(() => {
         setEngineBusy(false);
-        console.log('[handleSend] 引擎状态已重置');
+        console.log("[handleSend] 引擎状态已重置");
       }, 1000);
     }
   }
 
   // 停止AI回答的功能
   function handleStop() {
-    console.log('[handleStop] 执行停止操作...');
-    
+    console.log("[handleStop] 执行停止操作...");
+
     if (abortController) {
-      console.log('[handleStop] 中止当前请求...');
+      console.log("[handleStop] 中止当前请求...");
       abortController.abort();
     }
-    
+
     // 立即清理UI状态
     setLoading(false);
     setAbortController(null);
-    
+
     // 延迟清理处理状态和空消息，给异步操作一些时间完成
     setTimeout(() => {
-      console.log('[handleStop] 清理处理状态和空消息...');
+      console.log("[handleStop] 清理处理状态和空消息...");
       setIsProcessing(false);
-      
+
       // 清理未完成的空AI消息
       if (currentSession) {
         const cleanedMessages = sessionMessages.filter(
           (m: Message) => !(m.role === "assistant" && m.content.trim() === "")
         );
         if (cleanedMessages.length !== sessionMessages.length) {
-          console.log('[handleStop] 清理了空的AI消息');
+          console.log("[handleStop] 清理了空的AI消息");
           updateCurrentSession(cleanedMessages);
         }
       }
     }, 300);
-    
+
     // 延迟更长时间重置引擎状态，确保引擎完全就绪
     setTimeout(() => {
       setEngineBusy(false);
-      console.log('[handleStop] 引擎状态已重置，可以接受新请求');
-      
+      console.log("[handleStop] 引擎状态已重置，可以接受新请求");
+
       // 简化重置逻辑，不再自动强制重置
-      console.log('[handleStop] 停止操作完成，如果再次发送失败将自动重新初始化引擎');
+      console.log(
+        "[handleStop] 停止操作完成，如果再次发送失败将自动重新初始化引擎"
+      );
     }, 1000);
   }
 
@@ -871,7 +1105,8 @@ function App() {
       )}
 
       <main className="chat">
-        {sessionMessages.filter((m: Message) => m.role === "user").length === 0 && (
+        {sessionMessages.filter((m: Message) => m.role === "user").length ===
+          0 && (
           <div className="suggestions">
             {suggestions.map((s) => (
               <button
