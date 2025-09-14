@@ -11,6 +11,7 @@ if (!__g.__mlc_singleton) {
 }
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import "./App.css";
 
 export type Role = "user" | "assistant" | "system";
@@ -45,6 +46,9 @@ function useLocalStorage<T>(key: string, initial: T) {
 }
 
 function App() {
+  const { sessionId } = useParams<{ sessionId?: string }>();
+  const navigate = useNavigate();
+  
   const [messages, setMessages] = useState<Message[]>([
     { id: uid(), role: "system", content: "你是一个有帮助的智能助手。" },
     {
@@ -64,7 +68,7 @@ function App() {
     }
   );
 
-  // 初始化默认会话
+  // 初始化默认会话并处理URL路由
   useEffect(() => {
     if (sessionManager.sessions.length === 0) {
       const defaultSession: Session = {
@@ -85,12 +89,37 @@ function App() {
         sessions: [defaultSession],
         currentSessionId: defaultSession.id,
       });
+      // 如果URL没有sessionId，跳转到默认会话
+      if (!sessionId) {
+        navigate(`/chat/${defaultSession.id}`, { replace: true });
+      }
+    } else {
+      // 处理URL中的sessionId
+      if (sessionId) {
+        const existingSession = sessionManager.sessions.find(s => s.id === sessionId);
+        if (existingSession) {
+          // 如果会话存在，切换到该会话
+          if (sessionManager.currentSessionId !== sessionId) {
+            setSessionManager(prev => ({
+              ...prev,
+              currentSessionId: sessionId
+            }));
+          }
+        } else {
+          // 如果会话不存在，跳转到第一个会话
+          navigate(`/chat/${sessionManager.sessions[0].id}`, { replace: true });
+        }
+      } else {
+        // 如果没有sessionId，跳转到当前会话或第一个会话
+        const targetId = sessionManager.currentSessionId || sessionManager.sessions[0].id;
+        navigate(`/chat/${targetId}`, { replace: true });
+      }
     }
-  }, []);
+  }, [sessionId, sessionManager.sessions.length]);
 
-  // 获取当前会话
+  // 获取当前会话（优先使用URL参数）
   const currentSession = sessionManager.sessions.find(
-    (s) => s.id === sessionManager.currentSessionId
+    (s) => s.id === (sessionId || sessionManager.currentSessionId)
   );
 
   // 使用当前会话的消息，如果没有当前会话则使用默认消息
@@ -139,6 +168,10 @@ function App() {
       sessions: [newSession, ...prev.sessions],
       currentSessionId: newSession.id,
     }));
+    // 关闭侧边栏
+    setShowSidebar(false);
+    // 跳转到新会话的URL
+    navigate(`/chat/${newSession.id}`);
   };
 
   const switchSession = (sessionId: string) => {
@@ -146,6 +179,10 @@ function App() {
       ...prev,
       currentSessionId: sessionId,
     }));
+    // 关闭侧边栏
+    setShowSidebar(false);
+    // 跳转到指定会话的URL
+    navigate(`/chat/${sessionId}`);
   };
 
   const deleteSession = (sessionId: string) => {
@@ -156,6 +193,8 @@ function App() {
       // 如果删除的是当前会话，切换到第一个会话
       if (sessionId === prev.currentSessionId && newSessions.length > 0) {
         newCurrentId = newSessions[0].id;
+        // 跳转到新的当前会话
+        navigate(`/chat/${newCurrentId}`);
       }
 
       return {
@@ -323,9 +362,9 @@ function App() {
         .map(({ role, content }) => ({ role, content }));
 
       if (!engineReady || !engineRef.current) {
-        const waitingMsg = {
+        const waitingMsg: Message = {
           id: uid(),
-          role: "assistant",
+          role: "assistant" as Role,
           content: "本地模型初始化中，请稍候…",
         };
         updateCurrentSession([...newMessages, waitingMsg]);
@@ -333,9 +372,9 @@ function App() {
       }
       const eng = engineRef.current;
       const assistantId = uid();
-      let currentMessages = [
+      let currentMessages: Message[] = [
         ...newMessages,
-        { id: assistantId, role: "assistant", content: "" },
+        { id: assistantId, role: "assistant" as Role, content: "" },
       ];
       updateCurrentSession(currentMessages);
 
@@ -353,9 +392,9 @@ function App() {
         }
       }
     } catch (e: any) {
-      const errorMsg = {
+      const errorMsg: Message = {
         id: uid(),
-        role: "assistant",
+        role: "assistant" as Role,
         content: `请求出错：${e?.message || e}`,
       };
       updateCurrentSession([...newMessages, errorMsg]);
@@ -409,13 +448,12 @@ function App() {
                 <div
                   key={session.id}
                   className={`session-item ${
-                    session.id === sessionManager.currentSessionId
+                    session.id === (sessionId || sessionManager.currentSessionId)
                       ? "active"
                       : ""
                   }`}
                   onClick={() => {
                     switchSession(session.id);
-                    setShowSidebar(false);
                   }}
                 >
                   <div className="session-title">{session.title}</div>
@@ -465,7 +503,7 @@ function App() {
                 </div>
               </div>
             ))}
-          {loading && <div className="loading">AI 正在思考中…</div>}
+
         </div>
       </main>
 
