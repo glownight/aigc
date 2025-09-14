@@ -1,0 +1,451 @@
+/* 消息内容容器 */
+.message-content {
+  line-height: 1.7;
+  word-wrap: break-word;
+  word-break: break-word;
+}
+
+/* 用户消息样式 */
+.user-content {
+  color: inherit;
+}
+
+.user-line {
+  margin-bottom: 4px;
+}
+
+.user-line:last-child {
+  margin-bottom: 0;
+}
+
+/* AI消息样式 */
+.assistant-content {
+  color: var(--text);
+}
+
+/* Markdown 标题样式 */
+.md-h1 {
+  font-size: 1.8em;
+  font-weight: 700;
+  margin: 1.2em 0 0.8em 0;
+  padding-bottom: 0.3em;
+  border-bottom: 2px solid var(--border);
+  color: var(--primary);
+}
+
+.md-h2 {
+  font-size: 1.5em;
+  font-weight: 600;
+  margin: 1em 0 0.6em 0;
+  padding-bottom: 0.2em;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+}
+
+.md-h3 {
+  font-size: 1.3em;
+  font-weight: 600;
+  margin: 0.8em 0 0.5em 0;
+  color: var(--text);
+}
+
+.md-h4 {
+  font-size: 1.2em;
+  font-weight: 600;
+  margin: 0.7em 0 0.4em 0;
+  color: var(--text);
+}
+
+.md-h5 {
+  font-size: 1.1em;
+  font-weight: 600;
+  margin: 0.6em 0 0.3em 0;
+  color: var(--text);
+}
+
+.md-h6 {
+  font-size: 1em;
+  font-weight: 600;
+  margin: 0.5em 0 0.3em 0;
+  color: var(--text-muted);
+}
+
+/* 段落样式 */
+.md-paragraph {
+  margin: 0.8em 0;
+  line-height: 1.8;
+  text-align: justify;
+}
+
+.md-paragraph:first-child {
+  margin-top: 0;
+}
+
+.md-paragraph:last-child {
+  margin-bottom: 0;
+}
+
+/* 列表样式 */
+.md-list {
+  margin: 1em 0;
+  padding-left: 2em;
+}
+
+.md-ordered-list {
+  list-style-type: decimal;
+}
+
+.md-list-item {
+  margin: 0.5em 0;
+  line-height: 1.6;
+}
+
+.md-list-item::marker {
+  color: var(--primary);
+}
+
+/* 嵌套列表 */
+.md-list .md-list {
+  margin: 0.3em 0;
+}
+
+/* 引用样式 */
+.md-blockquote {
+  margin: 1.2em 0;
+  padding: 1em 1.5em;
+  background: var(--card);
+  border-left: 4px solid var(--primary);
+  border-radius: 0 8px 8px 0;
+  font-style: italic;
+  position: relative;
+}
+
+.md-blockquote::before {
+  content: '"';
+  font-size: 3em;
+  color: var(--primary);
+  position: absolute;
+  top: -0.2em;
+  left: 0.3em;
+  opacity: 0.3;
+}
+
+/* 代码样式 */
+.md-inline-code {
+  background: var(--card);
+  color: var(--primary);
+  padding: 0.2em 0.4em;
+  border-radius: 4px;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 0.9em;
+  border: 1px solid var(--border);
+}
+
+.md-pre {
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1.2em;
+  margin: 1.2em 0;
+  overflow-x: auto;
+  position: relative;
+}
+
+.md-code-block {
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 0.9em;
+  line-height: 1.6;
+  color: var(--text);
+  background: transparent;
+}
+
+/* 表格样式 */
+.md-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.2em 0;
+  background: var(--card);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.md-thead {
+  background: var(--primary);
+  color: white;
+}
+
+.md-th {
+  padding: 0.8em 1em;
+  text-align: left;
+  font-weight: 600;
+  border-bottom: 2px solid var(--border);
+}
+
+.md-td {
+  padding: 0.8em 1em;
+  border-bottom: 1px solid var(--border);
+}
+
+.md-tr:nth-child(even) .md-td {
+  background: rgba(var(--text-muted-rgb), 0.05);
+}
+
+.md-tr:hover .md-td {
+  background: rgba(var(--primary-rgb), 0.1);
+}
+
+/* 强调和斜体 */
+.md-strong {
+  font-weight: 700;
+  color: var(--text);
+}
+
+.md-em {
+  font-style: italic;
+  color: var(--text-muted);
+}
+
+/* 链接样式 */
+.md-link {
+  color: var(--primary);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.md-link:hover {
+  border-bottom-color: var(--primary);
+  background: rgba(var(--primary-rgb), 0.1);
+  padding: 0.1em 0.2em;
+  margin: -0.1em -0.2em;
+  border-radius: 4px;
+}
+
+/* 分隔线 */
+.md-hr {
+  border: none;
+  height: 2px;
+  background: linear-gradient(to right, transparent, var(--border), transparent);
+  margin: 2em 0;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .md-h1 {
+    font-size: 1.6em;
+  }
+  
+  .md-h2 {
+    font-size: 1.4em;
+  }
+  
+  .md-h3 {
+    font-size: 1.2em;
+  }
+  
+  .md-list {
+    padding-left: 1.5em;
+  }
+  
+  .md-blockquote {
+    padding: 0.8em 1em;
+    margin: 1em 0;
+  }
+  
+  .md-pre {
+    padding: 1em;
+    margin: 1em 0;
+  }
+  
+  .md-table {
+    font-size: 0.9em;
+  }
+  
+  .md-th,
+  .md-td {
+    padding: 0.6em 0.8em;
+  }
+}
+
+/* 打字效果动画 */
+@keyframes typing {
+  from {
+    width: 0;
+  }
+  to {
+    width: 100%;
+  }
+}
+
+.message-content.typing {
+  overflow: hidden;
+  white-space: nowrap;
+  animation: typing 0.5s steps(20, end);
+}
+
+/* 数字编号美化 */
+.md-ordered-list {
+  counter-reset: item;
+}
+
+.md-ordered-list .md-list-item {
+  display: block;
+  margin-bottom: 0.5em;
+  position: relative;
+}
+
+.md-ordered-list .md-list-item::before {
+  content: counter(item) ".";
+  counter-increment: item;
+  color: var(--primary);
+  font-weight: 600;
+  position: absolute;
+  left: -2em;
+  width: 1.5em;
+  text-align: right;
+}
+
+/* 代码高亮样式优化 */
+.md-pre {
+  position: relative;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  overflow: auto;
+}
+
+.md-pre .md-code-block {
+  display: block;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  font-size: 0.9em;
+  line-height: 1.6;
+  color: inherit;
+}
+
+/* 优化highlight.js的主题 */
+.hljs {
+  padding: 1.5em !important;
+  border-radius: 8px !important;
+  background: #1e1e1e !important;
+  color: #d4d4d4 !important;
+  font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace !important;
+  font-size: 0.9em !important;
+  line-height: 1.6 !important;
+}
+
+/* 关键字高亮 */
+.hljs-keyword {
+  color: #569cd6 !important;
+  font-weight: 600 !important;
+}
+
+/* 字符串高亮 */
+.hljs-string {
+  color: #ce9178 !important;
+}
+
+/* 注释高亮 */
+.hljs-comment {
+  color: #6a9955 !important;
+  font-style: italic !important;
+}
+
+/* 数字高亮 */
+.hljs-number {
+  color: #b5cea8 !important;
+}
+
+/* 函数名高亮 */
+.hljs-title.function_ {
+  color: #dcdcaa !important;
+  font-weight: 600 !important;
+}
+
+/* 变量名高亮 */
+.hljs-variable {
+  color: #9cdcfe !important;
+}
+
+/* 类型高亮 */
+.hljs-type {
+  color: #4ec9b0 !important;
+}
+
+/* 内联代码优化 */
+.md-inline-code {
+  background: rgba(129, 140, 255, 0.12) !important;
+  color: #818cff !important;
+  border: 1px solid rgba(129, 140, 255, 0.2) !important;
+  border-radius: 4px !important;
+  padding: 0.2em 0.4em !important;
+  font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace !important;
+  font-size: 0.85em !important;
+  font-weight: 500 !important;
+}
+
+/* 代码块滚动条样式 */
+.md-pre::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+
+.md-pre::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+
+.md-pre::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+}
+
+.md-pre::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+/* 代码块复制按钮（可选功能） */
+.md-pre::before {
+  content: 'Code';
+  position: absolute;
+  top: 0.5em;
+  right: 1em;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.75em;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  pointer-events: none;
+}
+
+/* 代码语言标识 */
+.md-pre[class*="language-"]::before {
+  content: attr(class);
+  content: '';
+}
+
+.md-pre .hljs::before {
+  position: absolute;
+  top: 0.5em;
+  right: 1em;
+  font-size: 0.75em;
+  color: rgba(255, 255, 255, 0.6);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* 响应式代码块 */
+@media (max-width: 768px) {
+  .hljs {
+    padding: 1em !important;
+    font-size: 0.8em !important;
+  }
+  
+  .md-inline-code {
+    font-size: 0.8em !important;
+  }
+}

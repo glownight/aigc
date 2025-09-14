@@ -2,10 +2,12 @@
 .theme-blue {
   --primary: #007AFF;
   --primary-600: #0056CC;
+  --primary-rgb: 0, 122, 255;
   --bg: #000000;
   --bg-soft: #1C1C1E;
   --text: #FFFFFF;
   --text-muted: #8E8E93;
+  --text-muted-rgb: 142, 142, 147;
   --card: #2C2C2E;
   --border: rgba(142,142,147,0.2);
   --shadow: 0 4px 16px rgba(0,0,0,0.3);
@@ -54,10 +56,12 @@
 .theme-black {
   --primary: #FFFFFF;
   --primary-600: #D1D1D6;
+  --primary-rgb: 255, 255, 255;
   --bg: #000000;
   --bg-soft: #1C1C1E;
   --text: #FFFFFF;
   --text-muted: #8E8E93;
+  --text-muted-rgb: 142, 142, 147;
   --card: #2C2C2E;
   --border: rgba(142,142,147,0.2);
   --shadow: 0 4px 16px rgba(0,0,0,0.3);
@@ -305,11 +309,18 @@ button:focus-visible {
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: 18px;
-  padding: 12px 16px;
+  padding: 16px 20px;
   max-width: calc(100% - 60px);
   word-wrap: break-word;
-  line-height: 1.5;
+  line-height: 1.6;
   position: relative;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+  transition: all 0.3s ease;
+}
+
+.bubble:hover {
+  box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+  transform: translateY(-1px);
 }
 
 .msg.user .bubble {
@@ -319,8 +330,61 @@ button:focus-visible {
 }
 
 .msg.assistant .bubble {
-  background: var(--card);
+  background: linear-gradient(135deg, var(--card), color-mix(in oklab, var(--card) 95%, var(--primary) 5%));
   color: var(--text);
+  border: 1px solid color-mix(in oklab, var(--border) 70%, var(--primary) 30%);
+  position: relative;
+}
+
+.msg.assistant .bubble::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(45deg, transparent 49%, rgba(var(--primary-rgb), 0.03) 50%, transparent 51%);
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+/* 加载指示器样式 */
+.loading-indicator {
+  display: flex;
+  align-items: center;
+  padding: 8px 0;
+}
+
+.typing-dots {
+  display: flex;
+  gap: 4px;
+}
+
+.typing-dots span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--primary);
+  animation: typing-bounce 1.4s infinite ease-in-out;
+}
+
+.typing-dots span:nth-child(1) {
+  animation-delay: -0.32s;
+}
+
+.typing-dots span:nth-child(2) {
+  animation-delay: -0.16s;
+}
+
+@keyframes typing-bounce {
+  0%, 80%, 100% {
+    transform: scale(0.8);
+    opacity: 0.5;
+  }
+  40% {
+    transform: scale(1.2);
+    opacity: 1;
+  }
 }
 
 .loading {

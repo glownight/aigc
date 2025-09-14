@@ -12,6 +12,7 @@ if (!__g.__mlc_singleton) {
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import MessageContent from "./MessageContent";
 import "./App.css";
 
 export type Role = "user" | "assistant" | "system";
@@ -623,7 +624,19 @@ function App() {
               <div key={m.id} className={`msg ${m.role}`}>
                 <div className="role">{m.role === "user" ? "我" : "AI"}</div>
                 <div className="bubble">
-                  {m.content || (loading && m.role === "assistant" ? "…" : "")}
+                  {m.content ? (
+                    <MessageContent content={m.content} role={m.role as "user" | "assistant"} />
+                  ) : (
+                    loading && m.role === "assistant" ? (
+                      <div className="loading-indicator">
+                        <div className="typing-dots">
+                          <span></span>
+                          <span></span>
+                          <span></span>
+                        </div>
+                      </div>
+                    ) : ""
+                  )}
                 </div>
               </div>
             ))}
