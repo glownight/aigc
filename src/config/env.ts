@@ -37,6 +37,18 @@ export const ENV = {
     IS_DEV: isDev,
 } as const;
 
+// 生产环境调试日志
+if (!isDev) {
+    console.log("[Config] 🚀 生产环境配置:", {
+        hasEnvKey: !!import.meta.env.VITE_REMOTE_API_KEY,
+        hasKey: ENV.REMOTE_API_KEY.length > 0,
+        keyPreview: ENV.REMOTE_API_KEY ? `${ENV.REMOTE_API_KEY.substring(0, 10)}...` : "未配置",
+        baseURL: ENV.REMOTE_API_BASE_URL,
+        model: ENV.REMOTE_API_MODEL,
+        engine: ENV.DEFAULT_ENGINE,
+    });
+}
+
 /**
  * 获取远程API配置
  */
