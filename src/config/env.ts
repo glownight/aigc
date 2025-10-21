@@ -18,10 +18,10 @@ const isDev = import.meta.env.DEV;
 
 export const ENV = {
     // 远程API配置
-    // 生产环境：必须使用环境变量
+    // 生产环境：使用环境变量或内置默认值
     // 开发环境：优先使用环境变量，否则使用 DEV_DEFAULTS
     REMOTE_API_BASE_URL: import.meta.env.VITE_REMOTE_API_BASE_URL
-        || (isDev ? DEV_DEFAULTS.BASE_URL : ""),
+        || (isDev ? DEV_DEFAULTS.BASE_URL : "https://tbnx.plus7.plus/"),
 
     REMOTE_API_KEY: import.meta.env.VITE_REMOTE_API_KEY
         || (isDev ? DEV_DEFAULTS.API_KEY : ""),
