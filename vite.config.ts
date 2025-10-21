@@ -1,10 +1,11 @@
-import { defineConfig, loadEnv, type Plugin } from 'vite'
+import { defineConfig, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import { visualizer } from 'rollup-plugin-visualizer'
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, process.cwd(), '')
+  // 加载环境变量（如果需要的话）
+  // const env = loadEnv(mode, process.cwd(), '')
   const isProd = mode === 'production'
 
   return {
@@ -12,17 +13,6 @@ export default defineConfig(({ mode }) => {
       react({
         // 在生产环境使用自动 JSX runtime
         jsxRuntime: 'automatic',
-        // 启用 Fast Refresh
-        fastRefresh: true,
-        // Babel 优化
-        babel: {
-          plugins: isProd
-            ? [
-              // 移除 PropTypes（生产环境）
-              ['babel-plugin-transform-remove-console', { exclude: ['error', 'warn'] }],
-            ]
-            : [],
-        },
       }),
       // 打包分析插件（可选）
       isProd &&

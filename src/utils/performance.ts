@@ -4,13 +4,13 @@
  */
 
 // Web Vitals 指标接口
-interface WebVitalsMetric {
-    name: 'FCP' | 'LCP' | 'FID' | 'CLS' | 'TTFB' | 'INP';
-    value: number;
-    rating: 'good' | 'needs-improvement' | 'poor';
-    delta: number;
-    id: string;
-}
+// interface WebVitalsMetric {
+//     name: 'FCP' | 'LCP' | 'FID' | 'CLS' | 'TTFB' | 'INP';
+//     value: number;
+//     rating: 'good' | 'needs-improvement' | 'poor';
+//     delta: number;
+//     id: string;
+// }
 
 // 性能数据接口
 interface PerformanceData {
@@ -62,13 +62,16 @@ function reportMetric(data: PerformanceData) {
     // 在生产环境中可以上报到分析服务
     if (import.meta.env.PROD) {
         // 使用 sendBeacon API 发送数据（不阻塞页面卸载）
-        const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+        // const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
 
         // 替换为你的分析服务端点
         // navigator.sendBeacon('/api/analytics', blob);
 
         // 或者使用第三方分析服务
         // 例如: Google Analytics, Sentry, DataDog 等
+        
+        // 避免未使用变量警告
+        void data;
     }
 }
 

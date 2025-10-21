@@ -42,9 +42,10 @@ const LockScreen = memo<LockScreenProps>(({ onUnlock }) => {
           return newTime;
         });
       }, 1000);
-
+      
       return () => clearTimeout(timer);
     }
+    return undefined;
   }, [isLockedOut, lockoutTime]);
 
   // 简单的密码混淆（实际项目中应该使用后端验证）

@@ -3,7 +3,7 @@
  * 捕获子组件的 JavaScript 错误，显示降级 UI
  */
 
-import React, { Component, ReactNode } from "react";
+import React, { Component, type ReactNode } from "react";
 import "./styles.css";
 
 interface Props {
@@ -32,7 +32,7 @@ class ErrorBoundary extends Component<Props, State> {
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+  override componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     // 你同样可以将错误日志上报给服务器
     console.error("ErrorBoundary caught an error:", error, errorInfo);
     this.setState({
@@ -54,7 +54,7 @@ class ErrorBoundary extends Component<Props, State> {
     window.location.reload();
   };
 
-  render() {
+  override render() {
     if (this.state.hasError) {
       // 如果提供了自定义降级 UI，使用它
       if (this.props.fallback) {
@@ -72,7 +72,7 @@ class ErrorBoundary extends Component<Props, State> {
             </p>
 
             {/* 开发环境下显示错误详情 */}
-            {process.env.NODE_ENV === "development" && this.state.error && (
+            {import.meta.env.DEV && this.state.error && (
               <details className="error-details">
                 <summary>错误详情</summary>
                 <pre className="error-stack">
