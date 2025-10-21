@@ -68,7 +68,7 @@ function App() {
     "aigc.engine",
     defaultEngineMode
   );
-  
+
   // 如果环境配置了 API Key，强制使用 remote 模式（忽略 localStorage）
   useEffect(() => {
     if (defaultEngineMode === "remote" && engine !== "remote") {
