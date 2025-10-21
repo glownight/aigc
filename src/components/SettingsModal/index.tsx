@@ -2,6 +2,7 @@
  * SettingsModal 组件 - 设置弹窗
  */
 
+import { memo, useCallback } from "react";
 import type { EngineMode, Theme, RemoteApiConfig } from "../../types";
 import "./styles.css";
 
@@ -17,7 +18,7 @@ interface SettingsModalProps {
   onRemoteApiConfigChange: (config: RemoteApiConfig) => void;
 }
 
-export default function SettingsModal({
+const SettingsModal = memo(function SettingsModal({
   engine,
   browserModel,
   remoteApiConfig,
@@ -26,8 +27,70 @@ export default function SettingsModal({
   onModelChange,
   onRemoteApiConfigChange,
 }: SettingsModalProps) {
+  const handleBackdropClick = useCallback(
+    (e: React.MouseEvent) => {
+      if (e.target === e.currentTarget) {
+        onClose();
+      }
+    },
+    [onClose]
+  );
+
+  const handleEngineChange = useCallback(
+    (e: React.ChangeEvent<HTMLSelectElement>) => {
+      onEngineChange(e.target.value as EngineMode);
+    },
+    [onEngineChange]
+  );
+
+  const handleModelChange = useCallback(
+    (e: React.ChangeEvent<HTMLSelectElement>) => {
+      onModelChange(e.target.value);
+    },
+    [onModelChange]
+  );
+
+  const handleBaseURLChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      onRemoteApiConfigChange({
+        ...remoteApiConfig,
+        baseURL: e.target.value,
+      });
+    },
+    [remoteApiConfig, onRemoteApiConfigChange]
+  );
+
+  const handleApiKeyChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      onRemoteApiConfigChange({
+        ...remoteApiConfig,
+        apiKey: e.target.value,
+      });
+    },
+    [remoteApiConfig, onRemoteApiConfigChange]
+  );
+
+  const handleRemoteModelSelectChange = useCallback(
+    (e: React.ChangeEvent<HTMLSelectElement>) => {
+      onRemoteApiConfigChange({
+        ...remoteApiConfig,
+        model: e.target.value,
+      });
+    },
+    [remoteApiConfig, onRemoteApiConfigChange]
+  );
+
+  const handleRemoteModelInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      onRemoteApiConfigChange({
+        ...remoteApiConfig,
+        model: e.target.value,
+      });
+    },
+    [remoteApiConfig, onRemoteApiConfigChange]
+  );
   return (
-    <div className="modal-backdrop" onClick={onClose}>
+    <div className="modal-backdrop" onClick={handleBackdropClick}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h2 className="modal-title">设置</h2>
@@ -38,10 +101,7 @@ export default function SettingsModal({
         <div className="settings">
           <div className="field">
             <label>引擎模式</label>
-            <select
-              value={engine}
-              onChange={(e) => onEngineChange(e.target.value as EngineMode)}
-            >
+            <select value={engine} onChange={handleEngineChange}>
               <option value="browser">浏览器本地模型</option>
               <option value="remote">远程API</option>
             </select>
@@ -50,10 +110,7 @@ export default function SettingsModal({
           {engine === "browser" ? (
             <div className="field">
               <label>浏览器模型</label>
-              <select
-                value={browserModel}
-                onChange={(e) => onModelChange(e.target.value)}
-              >
+              <select value={browserModel} onChange={handleModelChange}>
                 <option value="Qwen2.5-0.5B-Instruct-q4f32_1-MLC">
                   Qwen2.5-0.5B
                 </option>
@@ -66,12 +123,7 @@ export default function SettingsModal({
                 <input
                   type="password"
                   value={remoteApiConfig.baseURL}
-                  onChange={(e) =>
-                    onRemoteApiConfigChange({
-                      ...remoteApiConfig,
-                      baseURL: e.target.value,
-                    })
-                  }
+                  onChange={handleBaseURLChange}
                   placeholder="https://api.openai.com"
                 />
               </div>
@@ -80,12 +132,7 @@ export default function SettingsModal({
                 <input
                   type="password"
                   value={remoteApiConfig.apiKey}
-                  onChange={(e) =>
-                    onRemoteApiConfigChange({
-                      ...remoteApiConfig,
-                      apiKey: e.target.value,
-                    })
-                  }
+                  onChange={handleApiKeyChange}
                   placeholder="sk-..."
                 />
               </div>
@@ -93,12 +140,7 @@ export default function SettingsModal({
                 <label>模型名称</label>
                 <select
                   value={remoteApiConfig.model}
-                  onChange={(e) =>
-                    onRemoteApiConfigChange({
-                      ...remoteApiConfig,
-                      model: e.target.value,
-                    })
-                  }
+                  onChange={handleRemoteModelSelectChange}
                 >
                   <option value="deepseek-chat">DeepSeek Chat</option>
                   <option value="deepseek-reasoner">DeepSeek Reasoner</option>
@@ -116,12 +158,7 @@ export default function SettingsModal({
                 <input
                   type="text"
                   value={remoteApiConfig.model}
-                  onChange={(e) =>
-                    onRemoteApiConfigChange({
-                      ...remoteApiConfig,
-                      model: e.target.value,
-                    })
-                  }
+                  onChange={handleRemoteModelInputChange}
                   placeholder="输入自定义模型名称"
                   style={{ marginTop: "8px" }}
                 />
@@ -132,4 +169,6 @@ export default function SettingsModal({
       </div>
     </div>
   );
-}
+});
+
+export default SettingsModal;

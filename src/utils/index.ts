@@ -6,4 +6,5 @@ export * from "./uid";
 export * from "./similarity";
 export * from "./textQuality";
 export * from "./webllm";
+export * from "./performance";
 

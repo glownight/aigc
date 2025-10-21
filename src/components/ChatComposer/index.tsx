@@ -2,6 +2,7 @@
  * ChatComposer 组件 - 消息输入框
  */
 
+import { memo, useCallback } from "react";
 import "./styles.css";
 
 interface ChatComposerProps {
@@ -13,7 +14,7 @@ interface ChatComposerProps {
   onStop: () => void;
 }
 
-export default function ChatComposer({
+const ChatComposer = memo(function ChatComposer({
   input,
   loading,
   canSend,
@@ -21,22 +22,34 @@ export default function ChatComposer({
   onSend,
   onStop,
 }: ChatComposerProps) {
+  const handleChange = useCallback(
+    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      onInputChange(e.target.value);
+    },
+    [onInputChange]
+  );
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        if (loading) {
+          onStop();
+        } else {
+          onSend();
+        }
+      }
+    },
+    [loading, onSend, onStop]
+  );
+
   return (
     <footer className="composer">
       <textarea
         value={input}
-        onChange={(e) => onInputChange(e.target.value)}
+        onChange={handleChange}
         placeholder="请输入你的问题，回车发送，Shift+回车换行"
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && !e.shiftKey) {
-            e.preventDefault();
-            if (loading) {
-              onStop();
-            } else {
-              onSend();
-            }
-          }
-        }}
+        onKeyDown={handleKeyDown}
       />
       <div className="composer-actions">
         {loading ? (
@@ -51,4 +64,6 @@ export default function ChatComposer({
       </div>
     </footer>
   );
-}
+});
+
+export default ChatComposer;

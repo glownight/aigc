@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useCallback, memo } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
@@ -11,11 +11,11 @@ interface MessageContentProps {
   role: "user" | "assistant";
 }
 
-const MessageContent: React.FC<MessageContentProps> = ({ content, role }) => {
+const MessageContent = memo<MessageContentProps>(({ content, role }) => {
   const [copyStatus, setCopyStatus] = useState<"idle" | "copied">("idle");
 
   // 复制功能
-  const handleCopy = async () => {
+  const handleCopy = useCallback(async () => {
     try {
       await navigator.clipboard.writeText(content);
       setCopyStatus("copied");
@@ -36,7 +36,8 @@ const MessageContent: React.FC<MessageContentProps> = ({ content, role }) => {
       }
       document.body.removeChild(textArea);
     }
-  };
+  }, [content]);
+
   // 对用户消息进行简单处理
   if (role === "user") {
     return (
@@ -154,6 +155,6 @@ const MessageContent: React.FC<MessageContentProps> = ({ content, role }) => {
       </div>
     </div>
   );
-};
+});
 
 export default MessageContent;

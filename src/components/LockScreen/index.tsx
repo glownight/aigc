@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useMemo, memo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import "./styles.css";
 
@@ -6,7 +6,7 @@ interface LockScreenProps {
   onUnlock?: () => void;
 }
 
-const LockScreen: React.FC<LockScreenProps> = ({ onUnlock }) => {
+const LockScreen = memo<LockScreenProps>(({ onUnlock }) => {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isUnlocking, setIsUnlocking] = useState(false);
   const [showPasswordInput, setShowPasswordInput] = useState(false);
@@ -48,13 +48,13 @@ const LockScreen: React.FC<LockScreenProps> = ({ onUnlock }) => {
   }, [isLockedOut, lockoutTime]);
 
   // 简单的密码混淆（实际项目中应该使用后端验证）
-  const validatePassword = (input: string): boolean => {
+  const validatePassword = useCallback((input: string): boolean => {
     // 简单的混淆，实际项目中应该使用后端API验证
     const obfuscatedPassword = "55";
     return input === obfuscatedPassword;
-  };
+  }, []);
 
-  const handleUnlock = () => {
+  const handleUnlock = useCallback(() => {
     if (!showPasswordInput) {
       setShowPasswordInput(true);
       return;
@@ -95,30 +95,36 @@ const LockScreen: React.FC<LockScreenProps> = ({ onUnlock }) => {
         setPasswordError(false);
       }, 1000);
     }
-  };
+  }, [attemptCount, onUnlock, password, validatePassword]);
 
-  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setPassword(e.target.value);
-    setPasswordError(false);
-  };
+  const handlePasswordChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setPassword(e.target.value);
+      setPasswordError(false);
+    },
+    []
+  );
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      handleUnlock();
-    }
-  };
+  const handleKeyPress = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === "Enter") {
+        handleUnlock();
+      }
+    },
+    [handleUnlock]
+  );
 
-  const formatTime = (date: Date) => {
-    return date.toLocaleTimeString("zh-CN", {
+  const formatTime = useMemo(() => {
+    return currentTime.toLocaleTimeString("zh-CN", {
       hour: "2-digit",
       minute: "2-digit",
       second: "2-digit",
       hour12: false,
     });
-  };
+  }, [currentTime]);
 
-  const formatDate = (date: Date) => {
-    const dateString = date.toLocaleDateString("zh-CN", {
+  const formatDate = useMemo(() => {
+    const dateString = currentTime.toLocaleDateString("zh-CN", {
       weekday: "long",
       year: "numeric",
       month: "long",
@@ -130,7 +136,7 @@ const LockScreen: React.FC<LockScreenProps> = ({ onUnlock }) => {
       /(\d{4})年(\d{1,2})月(\d{1,2})日(\S+)/,
       "$1年$2月$3日 $4"
     );
-  };
+  }, [currentTime]);
 
   return (
     <div className={`lock-screen ${isUnlocking ? "unlocking" : ""}`}>
@@ -157,7 +163,7 @@ const LockScreen: React.FC<LockScreenProps> = ({ onUnlock }) => {
               repeatType: "reverse",
             }}
           >
-            {formatTime(currentTime)}
+            {formatTime}
           </motion.h1>
           <motion.p
             className="current-date"
@@ -165,7 +171,7 @@ const LockScreen: React.FC<LockScreenProps> = ({ onUnlock }) => {
             animate={{ opacity: 1 }}
             transition={{ duration: 1, delay: 1 }}
           >
-            {formatDate(currentTime)}
+            {formatDate}
           </motion.p>
         </motion.div>
 
@@ -295,6 +301,6 @@ const LockScreen: React.FC<LockScreenProps> = ({ onUnlock }) => {
       </AnimatePresence>
     </div>
   );
-};
+});
 
 export default LockScreen;

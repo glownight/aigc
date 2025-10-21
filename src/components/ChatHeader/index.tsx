@@ -2,6 +2,7 @@
  * ChatHeader 组件 - 顶部导航栏
  */
 
+import { memo, useMemo } from "react";
 import "./styles.css";
 
 interface ChatHeaderProps {
@@ -18,7 +19,7 @@ interface ChatHeaderProps {
   onLock: () => void;
 }
 
-export default function ChatHeader({
+const ChatHeader = memo(function ChatHeader({
   progressText,
   engineReady,
   browserModel,
@@ -31,6 +32,36 @@ export default function ChatHeader({
   onPauseDownload,
   onLock,
 }: ChatHeaderProps) {
+  // 计算进度百分比
+  const progressPercentage = useMemo(() => {
+    const match = progressText.match(/(\d+)%/);
+    return match ? match[1] : 0;
+  }, [progressText]);
+
+  // 计算是否显示进度条
+  const showProgressBar = useMemo(() => {
+    return progressText.includes("%");
+  }, [progressText]);
+
+  // 计算是否显示操作按钮
+  const showQuickActions = useMemo(() => {
+    return (
+      !engineReady &&
+      engineMode === "browser" &&
+      progressText.includes("首次") &&
+      !downloadPaused
+    );
+  }, [engineReady, engineMode, progressText, downloadPaused]);
+
+  // 计算引擎状态
+  const isEngineReady = useMemo(() => {
+    return engineMode === "remote" || engineReady;
+  }, [engineMode, engineReady]);
+
+  // 计算显示的模型名称
+  const displayModel = useMemo(() => {
+    return engineMode === "remote" ? remoteModel || "远程API" : browserModel;
+  }, [engineMode, remoteModel, browserModel]);
   return (
     <header className="header">
       <div className="topbar-left">
@@ -44,43 +75,33 @@ export default function ChatHeader({
             <span className="progress-text">{progressText}</span>
 
             {/* 进度条 */}
-            {progressText.includes("%") && (
+            {showProgressBar && (
               <div className="progress-bar-mini">
                 <div
                   className="progress-fill"
-                  style={{
-                    width: `${progressText.match(/(\d+)%/)?.[1] || 0}%`,
-                  }}
+                  style={{ width: `${progressPercentage}%` }}
                 ></div>
               </div>
             )}
 
             {/* 仅在首次下载且非移动端时显示操作按钮 */}
-            {!engineReady &&
-              engineMode === "browser" &&
-              progressText.includes("首次") &&
-              !downloadPaused && (
-                <div className="loading-tips-compact">
-                  <div className="quick-actions">
-                    <button
-                      className="btn-mini ghost"
-                      onClick={onPauseDownload}
-                      title="暂停下载"
-                    >
-                      暂停
-                    </button>
-                  </div>
+            {showQuickActions && (
+              <div className="loading-tips-compact">
+                <div className="quick-actions">
+                  <button
+                    className="btn-mini ghost"
+                    onClick={onPauseDownload}
+                    title="暂停下载"
+                  >
+                    暂停
+                  </button>
                 </div>
-              )}
+              </div>
+            )}
           </div>
 
-          <span
-            className="ready-dot"
-            data-ready={engineMode === "remote" || engineReady}
-          ></span>
-          <span className="engine-indicator">
-            {engineMode === "remote" ? remoteModel || "远程API" : browserModel}
-          </span>
+          <span className="ready-dot" data-ready={isEngineReady}></span>
+          <span className="engine-indicator">{displayModel}</span>
         </div>
         <button className="btn ghost" onClick={onLock} title="锁定应用">
           🔒
@@ -94,4 +115,6 @@ export default function ChatHeader({
       </div>
     </header>
   );
-}
+});
+
+export default ChatHeader;

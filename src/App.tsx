@@ -3,7 +3,7 @@
  * 采用模块化架构，提高代码可维护性和可读性
  */
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "./App.css";
 
 // Config
@@ -100,10 +100,10 @@ function App() {
       },
       {
         id: Math.random().toString(36).slice(2),
-          role: "assistant",
-          content: "你好，我可以为你提供智能问答服务～",
-        },
-      ],
+        role: "assistant",
+        content: "你好，我可以为你提供智能问答服务～",
+      },
+    ],
     []
   );
   const sessionMessages = currentSession?.messages || defaultMessages;
@@ -175,32 +175,34 @@ function App() {
     });
   }, [sessionMessages, loading]);
 
-  // 批量删除相关函数
-  function toggleBatchDeleteMode() {
-    setBatchDeleteMode(!batchDeleteMode);
+  // 批量删除相关函数 - 使用 useCallback 优化
+  const toggleBatchDeleteMode = useCallback(() => {
+    setBatchDeleteMode((prev) => !prev);
     setSelectedSessions(new Set());
-  }
+  }, []);
 
-  function toggleSessionSelection(id: string) {
-    const newSelected = new Set(selectedSessions);
-    if (newSelected.has(id)) {
-      newSelected.delete(id);
-    } else {
-      newSelected.add(id);
-    }
-    setSelectedSessions(newSelected);
-  }
+  const toggleSessionSelection = useCallback((id: string) => {
+    setSelectedSessions((prev) => {
+      const newSelected = new Set(prev);
+      if (newSelected.has(id)) {
+        newSelected.delete(id);
+      } else {
+        newSelected.add(id);
+      }
+      return newSelected;
+    });
+  }, []);
 
-  function selectAllSessions() {
+  const selectAllSessions = useCallback(() => {
     const allSessionIds = new Set(sessionManager.sessions.map((s) => s.id));
     setSelectedSessions(allSessionIds);
-  }
+  }, [sessionManager.sessions]);
 
-  function deselectAllSessions() {
+  const deselectAllSessions = useCallback(() => {
     setSelectedSessions(new Set());
-  }
+  }, []);
 
-  function handleBatchDelete() {
+  const handleBatchDelete = useCallback(() => {
     if (selectedSessions.size === 0) return;
 
     const sessionsToKeep = sessionManager.sessions.filter(
@@ -226,25 +228,33 @@ function App() {
 
     setBatchDeleteMode(false);
     setSelectedSessions(new Set());
-  }
+  }, [selectedSessions, sessionManager, createNewSession, setSessionManager]);
 
-  function handlePauseDownload() {
+  const handlePauseDownload = useCallback(() => {
     setDownloadPaused(true);
     setProgressText("已暂停，发送消息时自动继续");
-  }
+  }, [setProgressText]);
 
   // 解锁处理
-  const handleUnlock = () => {
+  const handleUnlock = useCallback(() => {
     setIsLocked(false);
-  };
+  }, []);
 
   // 上锁处理
-  const handleLock = () => {
+  const handleLock = useCallback(() => {
     // 清除解锁令牌
     sessionStorage.removeItem("unlockToken");
     // 设置锁定状态
     setIsLocked(true);
-  };
+  }, []);
+
+  // 发送消息处理
+  const handleSendMessage = useCallback(() => {
+    if (input.trim()) {
+      handleSend(input);
+      setInput("");
+    }
+  }, [input, handleSend]);
 
   // 自动锁定功能：2小时无操作自动上锁
   useEffect(() => {
@@ -361,12 +371,7 @@ function App() {
         loading={loading}
         canSend={canSend && input.trim().length > 0}
         onInputChange={setInput}
-        onSend={() => {
-          if (input.trim()) {
-            handleSend(input);
-            setInput("");
-          }
-        }}
+        onSend={handleSendMessage}
         onStop={handleStop}
       />
 
