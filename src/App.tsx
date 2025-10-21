@@ -6,11 +6,15 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import "./App.css";
 
+// Config
+import { getRemoteApiConfig, getDefaultEngine } from "./config/env";
+
 // Hooks
 import { useLocalStorage } from "./hooks/useLocalStorage";
 import { useSession } from "./hooks/useSession";
 import { useEngine } from "./hooks/useEngine";
 import { useChat } from "./hooks/useChat";
+import { useRemoteChat } from "./hooks/useRemoteChat";
 
 // Components
 import ChatHeader from "./components/ChatHeader";
@@ -19,11 +23,24 @@ import SuggestionCards from "./components/SuggestionCards";
 import ChatMessages from "./components/ChatMessages";
 import ChatComposer from "./components/ChatComposer";
 import SettingsModal from "./components/SettingsModal";
+import LockScreen from "./components/LockScreen";
 
 // Types
-import type { EngineMode, SessionManager, Theme, Message } from "./types";
+import type {
+  EngineMode,
+  SessionManager,
+  Theme,
+  Message,
+  RemoteApiConfig,
+} from "./types";
 
 function App() {
+  // 锁屏状态 - 检查是否已解锁
+  const [isLocked, setIsLocked] = useState(() => {
+    const unlockToken = sessionStorage.getItem("unlockToken");
+    return !unlockToken; // 如果没有解锁令牌，则处于锁定状态
+  });
+
   // 基础状态
   const [input, setInput] = useState("");
   const [showSettings, setShowSettings] = useState(false);
@@ -47,7 +64,7 @@ function App() {
 
   const [engine, setEngine] = useLocalStorage<EngineMode>(
     "aigc.engine",
-    "browser"
+    getDefaultEngine() // 默认使用环境变量配置的引擎模式
   );
 
   const [theme, setTheme] = useLocalStorage<Theme>("aigc.theme", "black");
@@ -56,6 +73,12 @@ function App() {
     "aigc.browserModel",
     "Qwen2.5-0.5B-Instruct-q4f32_1-MLC"
   );
+
+  const [remoteApiConfig, setRemoteApiConfig] =
+    useLocalStorage<RemoteApiConfig>(
+      "aigc.remoteApiConfig",
+      getRemoteApiConfig() // 从环境变量读取配置
+    );
 
   // 会话管理
   const {
@@ -77,10 +100,10 @@ function App() {
       },
       {
         id: Math.random().toString(36).slice(2),
-        role: "assistant",
-        content: "你好，我可以为你提供智能问答服务～",
-      },
-    ],
+          role: "assistant",
+          content: "你好，我可以为你提供智能问答服务～",
+        },
+      ],
     []
   );
   const sessionMessages = currentSession?.messages || defaultMessages;
@@ -92,8 +115,8 @@ function App() {
     downloadPaused
   );
 
-  // 聊天逻辑
-  const { loading, canSend, handleSend, handleStop } = useChat(
+  // 聊天逻辑 - 根据引擎模式选择
+  const browserChat = useChat(
     engineRef,
     engineReady,
     browserModel,
@@ -103,6 +126,16 @@ function App() {
     downloadPaused,
     setDownloadPaused
   );
+
+  const remoteChat = useRemoteChat(
+    remoteApiConfig,
+    sessionMessages,
+    updateCurrentSession
+  );
+
+  // 根据引擎模式选择对应的聊天逻辑
+  const { loading, canSend, handleSend, handleStop } =
+    engine === "browser" ? browserChat : remoteChat;
 
   // 建议卡片
   const suggestions = useMemo(
@@ -200,6 +233,71 @@ function App() {
     setProgressText("已暂停，发送消息时自动继续");
   }
 
+  // 解锁处理
+  const handleUnlock = () => {
+    setIsLocked(false);
+  };
+
+  // 上锁处理
+  const handleLock = () => {
+    // 清除解锁令牌
+    sessionStorage.removeItem("unlockToken");
+    // 设置锁定状态
+    setIsLocked(true);
+  };
+
+  // 自动锁定功能：2小时无操作自动上锁
+  useEffect(() => {
+    if (isLocked) return; // 如果已锁定，不需要监听
+
+    const AUTO_LOCK_TIME = 2 * 60 * 60 * 1000; // 2小时（毫秒）
+    let timeoutId: ReturnType<typeof setTimeout>;
+
+    // 重置计时器
+    const resetTimer = () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+      timeoutId = setTimeout(() => {
+        console.log("[自动锁定] 2小时无操作，自动锁定应用");
+        handleLock();
+      }, AUTO_LOCK_TIME);
+    };
+
+    // 用户交互事件列表
+    const events = [
+      "mousedown",
+      "mousemove",
+      "keypress",
+      "scroll",
+      "touchstart",
+      "click",
+    ];
+
+    // 监听所有交互事件
+    events.forEach((event) => {
+      document.addEventListener(event, resetTimer);
+    });
+
+    // 初始化计时器
+    resetTimer();
+
+    // 清理函数
+    return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+      events.forEach((event) => {
+        document.removeEventListener(event, resetTimer);
+      });
+    };
+  }, [isLocked]);
+
+  // 如果处于锁定状态，只显示锁屏
+  if (isLocked) {
+    return <LockScreen onUnlock={handleUnlock} />;
+  }
+
   return (
     <div className={`app theme-${theme}`}>
       {/* 头部导航 */}
@@ -208,10 +306,13 @@ function App() {
         engineReady={engineReady}
         browserModel={browserModel}
         downloadPaused={downloadPaused}
+        engineMode={engine}
+        remoteModel={remoteApiConfig.model}
         onToggleSidebar={() => setShowSidebar(!showSidebar)}
         onShowSettings={() => setShowSettings(true)}
         onNewSession={() => createNewSession(() => setShowSidebar(false))}
         onPauseDownload={handlePauseDownload}
+        onLock={handleLock}
       />
 
       {/* 会话列表侧边栏 */}
@@ -275,10 +376,12 @@ function App() {
           engine={engine}
           theme={theme}
           browserModel={browserModel}
+          remoteApiConfig={remoteApiConfig}
           onClose={() => setShowSettings(false)}
           onEngineChange={setEngine}
           onThemeChange={setTheme}
           onModelChange={setBrowserModel}
+          onRemoteApiConfigChange={setRemoteApiConfig}
         />
       )}
     </div>

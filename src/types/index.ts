@@ -10,7 +10,7 @@ export type Message = {
     content: string;
 };
 
-export type EngineMode = "browser";
+export type EngineMode = "browser" | "remote";
 
 export type Session = {
     id: string;
@@ -51,5 +51,14 @@ export interface StreamConfig {
 export interface QualityCheckResult {
     isValid: boolean;
     reason?: string;
+}
+
+/**
+ * 远程API配置
+ */
+export interface RemoteApiConfig {
+    baseURL: string;
+    apiKey: string;
+    model: string;
 }
 

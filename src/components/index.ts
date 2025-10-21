@@ -8,4 +8,5 @@ export { default as SuggestionCards } from "./SuggestionCards";
 export { default as ChatMessages } from "./ChatMessages";
 export { default as ChatComposer } from "./ChatComposer";
 export { default as SettingsModal } from "./SettingsModal";
+export { default as LockScreen } from "./LockScreen";
 

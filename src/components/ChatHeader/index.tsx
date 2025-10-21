@@ -9,10 +9,13 @@ interface ChatHeaderProps {
   engineReady: boolean;
   browserModel: string;
   downloadPaused: boolean;
+  engineMode?: "browser" | "remote";
+  remoteModel?: string;
   onToggleSidebar: () => void;
   onShowSettings: () => void;
   onNewSession: () => void;
   onPauseDownload: () => void;
+  onLock: () => void;
 }
 
 export default function ChatHeader({
@@ -20,10 +23,13 @@ export default function ChatHeader({
   engineReady,
   browserModel,
   downloadPaused,
+  engineMode = "browser",
+  remoteModel,
   onToggleSidebar,
   onShowSettings,
   onNewSession,
   onPauseDownload,
+  onLock,
 }: ChatHeaderProps) {
   return (
     <header className="header">
@@ -51,6 +57,7 @@ export default function ChatHeader({
 
             {/* 仅在首次下载且非移动端时显示操作按钮 */}
             {!engineReady &&
+              engineMode === "browser" &&
               progressText.includes("首次") &&
               !downloadPaused && (
                 <div className="loading-tips-compact">
@@ -67,9 +74,17 @@ export default function ChatHeader({
               )}
           </div>
 
-          <span className="ready-dot" data-ready={engineReady}></span>
-          <span className="engine-indicator">{browserModel}</span>
+          <span
+            className="ready-dot"
+            data-ready={engineMode === "remote" || engineReady}
+          ></span>
+          <span className="engine-indicator">
+            {engineMode === "remote" ? remoteModel || "远程API" : browserModel}
+          </span>
         </div>
+        <button className="btn ghost" onClick={onLock} title="锁定应用">
+          🔒
+        </button>
         <button className="btn ghost" onClick={onShowSettings}>
           设置
         </button>
