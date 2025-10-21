@@ -23,14 +23,9 @@
       ]
     }
   ],
-  "functions": {
-    "app/api/edge/route.ts": {
-      "maxDuration": 10
-    }
-  },
   "rewrites": [
     {
-      "source": "/((?!api).*)",
+      "source": "/(.*)",
       "destination": "/index.html"
     }
   ]
