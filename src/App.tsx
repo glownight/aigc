@@ -62,10 +62,20 @@ function App() {
     }
   );
 
+  // 引擎模式：优先使用环境变量配置，允许用户手动切换
+  const defaultEngineMode = getDefaultEngine();
   const [engine, setEngine] = useLocalStorage<EngineMode>(
     "aigc.engine",
-    getDefaultEngine() // 默认使用环境变量配置的引擎模式
+    defaultEngineMode
   );
+  
+  // 如果环境配置了 API Key，强制使用 remote 模式（忽略 localStorage）
+  useEffect(() => {
+    if (defaultEngineMode === "remote" && engine !== "remote") {
+      console.log("[App] 检测到 API 配置，切换到远程模式");
+      setEngine("remote");
+    }
+  }, [defaultEngineMode, engine, setEngine]);
 
   const [theme, setTheme] = useLocalStorage<Theme>("aigc.theme", "black");
 
