@@ -1,27 +1,63 @@
 /**
  * 环境变量配置
- * 优先读取环境变量，否则使用默认值
+ * 
+ * 开发环境：使用下面的默认配置（方便调试）
+ * 生产环境：使用环境变量（安全）
  */
+
+// ⚠️ 开发环境默认配置 - 仅用于开发调试
+// 生产环境请通过环境变量配置，不要在这里写真实密钥
+const DEV_DEFAULTS = {
+    BASE_URL: "https://api.deepseek.com",  // DeepSeek API 地址
+    API_KEY: "your-api-key-here",          // 🔑 在这里填写你的开发环境 API Key
+    MODEL: "deepseek-chat",                // 默认模型
+};
+
+// 判断是否为开发环境
+const isDev = import.meta.env.DEV;
 
 export const ENV = {
     // 远程API配置
-    REMOTE_API_BASE_URL: import.meta.env.VITE_REMOTE_API_BASE_URL || "https://tbnx.plus7.plus/",
-    REMOTE_API_KEY: import.meta.env.VITE_REMOTE_API_KEY || "",
-    REMOTE_API_MODEL: import.meta.env.VITE_REMOTE_API_MODEL || "deepseek-chat",
+    // 生产环境：必须使用环境变量
+    // 开发环境：优先使用环境变量，否则使用 DEV_DEFAULTS
+    REMOTE_API_BASE_URL: import.meta.env.VITE_REMOTE_API_BASE_URL
+        || (isDev ? DEV_DEFAULTS.BASE_URL : ""),
+
+    REMOTE_API_KEY: import.meta.env.VITE_REMOTE_API_KEY
+        || (isDev ? DEV_DEFAULTS.API_KEY : ""),
+
+    REMOTE_API_MODEL: import.meta.env.VITE_REMOTE_API_MODEL
+        || (isDev ? DEV_DEFAULTS.MODEL : "deepseek-chat"),
 
     // 默认引擎模式
-    DEFAULT_ENGINE: (import.meta.env.VITE_DEFAULT_ENGINE as "browser" | "remote") || "remote",
+    DEFAULT_ENGINE: (import.meta.env.VITE_DEFAULT_ENGINE as "browser" | "remote")
+        || (isDev ? "remote" : "browser"),
+
+    // 是否为开发环境
+    IS_DEV: isDev,
 } as const;
 
 /**
  * 获取远程API配置
  */
 export function getRemoteApiConfig() {
-    return {
+    const config = {
         baseURL: ENV.REMOTE_API_BASE_URL,
         apiKey: ENV.REMOTE_API_KEY,
         model: ENV.REMOTE_API_MODEL,
     };
+
+    // 开发环境提示
+    if (ENV.IS_DEV) {
+        console.log("[Config] 🔧 开发环境配置:", {
+            baseURL: config.baseURL,
+            model: config.model,
+            hasKey: config.apiKey.length > 0,
+            keyPreview: config.apiKey ? `${config.apiKey.substring(0, 10)}...` : "未配置"
+        });
+    }
+
+    return config;
 }
 
 /**

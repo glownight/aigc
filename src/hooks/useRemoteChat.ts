@@ -53,17 +53,31 @@ export function useRemoteChat(
 
             console.log("[useRemoteChat] 请求URL:", apiURL);
 
+            const requestBody = {
+                model: apiConfig.model,
+                messages: sendMessages,
+                stream: true,
+            };
+
+            const requestHeaders = {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${apiConfig.apiKey}`,
+            };
+
+            console.log("[useRemoteChat] 请求头:", {
+                "Content-Type": requestHeaders["Content-Type"],
+                "Authorization": `Bearer ${apiConfig.apiKey.substring(0, 10)}...`,
+            });
+            console.log("[useRemoteChat] 请求体:", {
+                model: requestBody.model,
+                messagesCount: requestBody.messages.length,
+                stream: requestBody.stream,
+            });
+
             const response = await fetch(apiURL, {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${apiConfig.apiKey}`,
-                },
-                body: JSON.stringify({
-                    model: apiConfig.model,
-                    messages: sendMessages,
-                    stream: true,
-                }),
+                headers: requestHeaders,
+                body: JSON.stringify(requestBody),
                 signal: controller.signal,
             });
 

@@ -12,6 +12,7 @@
 |------|------|---------|
 | **[README.zh-CN.md](README.zh-CN.md)** | 📖 中文使用指南，项目概览 | 所有用户 |
 | **[QUICK_START.md](QUICK_START.md)** | ⚡ 5分钟快速开始 | 新手 |
+| **[QUICK_CONFIG.md](QUICK_CONFIG.md)** | 🔑 5分钟快速配置 API | 需要配置的用户 |
 | **[EXAMPLES.md](EXAMPLES.md)** | 💡 代码示例和最佳实践 | 开发者 |
 
 ### 🏗️ 架构文档（深入理解）
@@ -31,6 +32,13 @@
 | **[PERFORMANCE_OPTIMIZATION.md](PERFORMANCE_OPTIMIZATION.md)** | 🚀 性能优化详解 | 开发者 |
 | **[LOADING_OPTIMIZATION.md](LOADING_OPTIMIZATION.md)** | ⏱️ 加载优化指南 | 开发者 |
 
+### 🔧 配置文档（环境配置）
+
+| 文档 | 说明 | 适合人群 |
+|------|------|---------|
+| **[ENV_SETUP.md](ENV_SETUP.md)** | 🔐 环境变量详细配置指南 | 开发者 |
+| **[API_CONFIG_SUMMARY.md](API_CONFIG_SUMMARY.md)** | 🔑 API 配置总结 | 开发者 |
+
 ### 🤝 贡献指南（参与开发）
 
 | 文档 | 说明 | 适合人群 |
@@ -45,6 +53,7 @@
 | **[README.md](README.md)** | 📄 英文版 README | 国际用户 |
 | **[REFACTORING_SUMMARY.md](REFACTORING_SUMMARY.md)** | 📑 重构总结 | 维护者 |
 | **[UI_FIX_SUMMARY.md](UI_FIX_SUMMARY.md)** | 🎨 UI 修复记录 | 维护者 |
+| **[PROJECT_COMPLETION_REPORT.md](PROJECT_COMPLETION_REPORT.md)** | 🎉 项目完成报告 | 所有人 |
 
 ---
 
@@ -211,11 +220,13 @@
 
 | 类别 | 数量 | 总行数 | 示例数 |
 |------|------|--------|--------|
-| 入门文档 | 3 份 | 800+ | 15+ |
+| 入门文档 | 4 份 | 1000+ | 20+ |
 | 架构文档 | 3 份 | 1000+ | 25+ |
 | 优化文档 | 4 份 | 1200+ | 20+ |
+| 配置文档 | 3 份 | 1000+ | 15+ |
 | 贡献文档 | 2 份 | 800+ | 20+ |
-| **合计** | **12 份** | **3800+ 行** | **80+ 示例** |
+| 其他文档 | 4 份 | 800+ | 10+ |
+| **合计** | **20 份** | **5800+ 行** | **110+ 示例** |
 
 ### 覆盖范围
 
