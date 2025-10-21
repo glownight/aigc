@@ -27,11 +27,11 @@ export const ENV = {
         || (isDev ? DEV_DEFAULTS.API_KEY : ""),
 
     REMOTE_API_MODEL: import.meta.env.VITE_REMOTE_API_MODEL
-        || (isDev ? DEV_DEFAULTS.MODEL : "deepseek-chat"),
+        || (isDev ? DEV_DEFAULTS.MODEL : "deepseek-reasoner"),
 
     // 默认引擎模式
     DEFAULT_ENGINE: (import.meta.env.VITE_DEFAULT_ENGINE as "browser" | "remote")
-        || (isDev ? "remote" : "browser"),
+        || (isDev ? "remote" : "remote"),
 
     // 是否为开发环境
     IS_DEV: isDev,
