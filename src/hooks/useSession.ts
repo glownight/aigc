@@ -35,9 +35,7 @@ export function useSession(
                 sessions: [defaultSession],
                 currentSessionId: defaultSession.id,
             });
-            if (!sessionId) {
-                navigate(`/chat/${defaultSession.id}`, { replace: true });
-            }
+            // 不自动跳转，保持在当前路径（根路径或会话路径）
         } else {
             if (sessionId) {
                 const existingSession = sessionManager.sessions.find(
