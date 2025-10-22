@@ -37,26 +37,32 @@ export const ENV = {
     IS_DEV: isDev,
 } as const;
 
-// 生产环境调试日志
-if (!isDev) {
-    console.log("[Config] 🚀 生产环境配置:");
-    console.log("  - 环境变量原始值:");
-    console.log("    • VITE_REMOTE_API_KEY:", import.meta.env.VITE_REMOTE_API_KEY ? 
-        `${String(import.meta.env.VITE_REMOTE_API_KEY).substring(0, 10)}...${String(import.meta.env.VITE_REMOTE_API_KEY).slice(-4)}` : 
-        "❌ 未配置");
-    console.log("    • VITE_REMOTE_API_BASE_URL:", import.meta.env.VITE_REMOTE_API_BASE_URL || "❌ 未配置");
-    console.log("    • VITE_REMOTE_API_MODEL:", import.meta.env.VITE_REMOTE_API_MODEL || "❌ 未配置");
-    console.log("    • VITE_DEFAULT_ENGINE:", import.meta.env.VITE_DEFAULT_ENGINE || "❌ 未配置");
-    
-    console.log("  - 最终配置值:");
-    console.log("    • baseURL:", ENV.REMOTE_API_BASE_URL);
-    console.log("    • model:", ENV.REMOTE_API_MODEL);
-    console.log("    • engine:", ENV.DEFAULT_ENGINE);
-    console.log("    • hasKey:", ENV.REMOTE_API_KEY.length > 0);
-    console.log("    • keyPreview:", ENV.REMOTE_API_KEY ? 
-        `${ENV.REMOTE_API_KEY.substring(0, 10)}...${ENV.REMOTE_API_KEY.slice(-4)} (长度: ${ENV.REMOTE_API_KEY.length})` : 
-        "❌ 未配置");
-}
+// 🔍 环境配置调试日志（开发和生产环境都打印）
+console.log("=".repeat(60));
+console.log("[Config] 🔧 环境信息:");
+console.log("  • isDev:", isDev);
+console.log("  • MODE:", import.meta.env.MODE);
+console.log("  • DEV:", import.meta.env.DEV);
+console.log("  • PROD:", import.meta.env.PROD);
+console.log("=".repeat(60));
+
+console.log("[Config] 📝 环境变量原始值:");
+console.log("  • VITE_REMOTE_API_KEY:", import.meta.env.VITE_REMOTE_API_KEY ? 
+    `${String(import.meta.env.VITE_REMOTE_API_KEY).substring(0, 10)}...${String(import.meta.env.VITE_REMOTE_API_KEY).slice(-4)}` : 
+    "❌ 未配置");
+console.log("  • VITE_REMOTE_API_BASE_URL:", import.meta.env.VITE_REMOTE_API_BASE_URL || "❌ 未配置");
+console.log("  • VITE_REMOTE_API_MODEL:", import.meta.env.VITE_REMOTE_API_MODEL || "❌ 未配置");
+console.log("  • VITE_DEFAULT_ENGINE:", import.meta.env.VITE_DEFAULT_ENGINE || "❌ 未配置");
+
+console.log("[Config] ✅ 最终配置值:");
+console.log("  • baseURL:", ENV.REMOTE_API_BASE_URL);
+console.log("  • model:", ENV.REMOTE_API_MODEL);
+console.log("  • engine:", ENV.DEFAULT_ENGINE);
+console.log("  • hasKey:", ENV.REMOTE_API_KEY.length > 0);
+console.log("  • keyPreview:", ENV.REMOTE_API_KEY ? 
+    `${ENV.REMOTE_API_KEY.substring(0, 10)}...${ENV.REMOTE_API_KEY.slice(-4)} (长度: ${ENV.REMOTE_API_KEY.length})` : 
+    "❌ 未配置");
+console.log("=".repeat(60));
 
 /**
  * 获取远程API配置
