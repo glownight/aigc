@@ -54,9 +54,14 @@ export function useSession(
                     navigate(`/chat/${sessionManager.sessions[0].id}`, { replace: true });
                 }
             } else {
-                const targetId =
-                    sessionManager.currentSessionId || sessionManager.sessions[0].id;
-                navigate(`/chat/${targetId}`, { replace: true });
+                // 访问根路径时，不自动跳转，只设置当前会话
+                const targetId = sessionManager.currentSessionId || sessionManager.sessions[0].id;
+                if (sessionManager.currentSessionId !== targetId) {
+                    setSessionManager((prev) => ({
+                        ...prev,
+                        currentSessionId: targetId,
+                    }));
+                }
             }
         }
     }, [sessionId, sessionManager.sessions.length]);
