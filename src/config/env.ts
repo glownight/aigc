@@ -47,8 +47,8 @@ console.log("  • PROD:", import.meta.env.PROD);
 console.log("=".repeat(60));
 
 console.log("[Config] 📝 环境变量原始值:");
-console.log("  • VITE_REMOTE_API_KEY:", import.meta.env.VITE_REMOTE_API_KEY ? 
-    `${String(import.meta.env.VITE_REMOTE_API_KEY).substring(0, 10)}...${String(import.meta.env.VITE_REMOTE_API_KEY).slice(-4)}` : 
+console.log("  • VITE_REMOTE_API_KEY:", import.meta.env.VITE_REMOTE_API_KEY ?
+    `${String(import.meta.env.VITE_REMOTE_API_KEY).substring(0, 10)}...${String(import.meta.env.VITE_REMOTE_API_KEY).slice(-4)}` :
     "❌ 未配置");
 console.log("  • VITE_REMOTE_API_BASE_URL:", import.meta.env.VITE_REMOTE_API_BASE_URL || "❌ 未配置");
 console.log("  • VITE_REMOTE_API_MODEL:", import.meta.env.VITE_REMOTE_API_MODEL || "❌ 未配置");
@@ -59,8 +59,8 @@ console.log("  • baseURL:", ENV.REMOTE_API_BASE_URL);
 console.log("  • model:", ENV.REMOTE_API_MODEL);
 console.log("  • engine:", ENV.DEFAULT_ENGINE);
 console.log("  • hasKey:", ENV.REMOTE_API_KEY.length > 0);
-console.log("  • keyPreview:", ENV.REMOTE_API_KEY ? 
-    `${ENV.REMOTE_API_KEY.substring(0, 10)}...${ENV.REMOTE_API_KEY.slice(-4)} (长度: ${ENV.REMOTE_API_KEY.length})` : 
+console.log("  • keyPreview:", ENV.REMOTE_API_KEY ?
+    `${ENV.REMOTE_API_KEY.substring(0, 10)}...${ENV.REMOTE_API_KEY.slice(-4)} (长度: ${ENV.REMOTE_API_KEY.length})` :
     "❌ 未配置");
 console.log("=".repeat(60));
 
