@@ -28,8 +28,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
   <ErrorBoundary>
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Navigate to="/chat" replace />} />
-        <Route path="/chat" element={<App />} />
+        <Route path="/" element={<App />} />
         <Route path="/chat/:sessionId" element={<App />} />
       </Routes>
     </BrowserRouter>
