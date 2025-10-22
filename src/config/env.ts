@@ -39,14 +39,23 @@ export const ENV = {
 
 // 生产环境调试日志
 if (!isDev) {
-    console.log("[Config] 🚀 生产环境配置:", {
-        hasEnvKey: !!import.meta.env.VITE_REMOTE_API_KEY,
-        hasKey: ENV.REMOTE_API_KEY.length > 0,
-        keyPreview: ENV.REMOTE_API_KEY ? `${ENV.REMOTE_API_KEY.substring(0, 10)}...` : "未配置",
-        baseURL: ENV.REMOTE_API_BASE_URL,
-        model: ENV.REMOTE_API_MODEL,
-        engine: ENV.DEFAULT_ENGINE,
-    });
+    console.log("[Config] 🚀 生产环境配置:");
+    console.log("  - 环境变量原始值:");
+    console.log("    • VITE_REMOTE_API_KEY:", import.meta.env.VITE_REMOTE_API_KEY ? 
+        `${String(import.meta.env.VITE_REMOTE_API_KEY).substring(0, 10)}...${String(import.meta.env.VITE_REMOTE_API_KEY).slice(-4)}` : 
+        "❌ 未配置");
+    console.log("    • VITE_REMOTE_API_BASE_URL:", import.meta.env.VITE_REMOTE_API_BASE_URL || "❌ 未配置");
+    console.log("    • VITE_REMOTE_API_MODEL:", import.meta.env.VITE_REMOTE_API_MODEL || "❌ 未配置");
+    console.log("    • VITE_DEFAULT_ENGINE:", import.meta.env.VITE_DEFAULT_ENGINE || "❌ 未配置");
+    
+    console.log("  - 最终配置值:");
+    console.log("    • baseURL:", ENV.REMOTE_API_BASE_URL);
+    console.log("    • model:", ENV.REMOTE_API_MODEL);
+    console.log("    • engine:", ENV.DEFAULT_ENGINE);
+    console.log("    • hasKey:", ENV.REMOTE_API_KEY.length > 0);
+    console.log("    • keyPreview:", ENV.REMOTE_API_KEY ? 
+        `${ENV.REMOTE_API_KEY.substring(0, 10)}...${ENV.REMOTE_API_KEY.slice(-4)} (长度: ${ENV.REMOTE_API_KEY.length})` : 
+        "❌ 未配置");
 }
 
 /**
