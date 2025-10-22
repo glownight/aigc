@@ -35,6 +35,14 @@ import type {
 } from "./types";
 
 function App() {
+  // 🔍 打印配置信息（在组件挂载后）
+  useEffect(() => {
+    console.log("=".repeat(60));
+    console.log("[App] 📱 应用已加载");
+    console.log("[App] 🔧 当前路径:", window.location.pathname);
+    console.log("=".repeat(60));
+  }, []);
+
   // 锁屏状态 - 检查是否已解锁
   const [isLocked, setIsLocked] = useState(() => {
     const unlockToken = sessionStorage.getItem("unlockToken");
