@@ -26,7 +26,14 @@ export function useRemoteChat(
         });
 
         const userMsg: Message = { id: uid(), role: "user", content: text.trim() };
-        const newMessages = [...sessionMessages, userMsg];
+        const assistantId = uid();
+
+        // 立即创建用户消息和空的 assistant 消息，显示加载状态
+        const newMessages = [
+            ...sessionMessages,
+            userMsg,
+            { id: assistantId, role: "assistant" as Role, content: "" } // 空消息用于显示加载动画
+        ];
         updateCurrentSession(newMessages);
 
         setLoading(true);
@@ -95,8 +102,12 @@ export function useRemoteChat(
             }
 
             const decoder = new TextDecoder();
-            const assistantId = uid();
-            let assistantMessage: Message | null = null;
+            // assistantId 已在上面创建
+            let assistantMessage: Message = {
+                id: assistantId,
+                role: "assistant" as Role,
+                content: ""
+            };
             let hasStartedStreaming = false;
 
             console.log("[useRemoteChat] 开始读取流式响应...");
@@ -129,17 +140,17 @@ export function useRemoteChat(
                                 console.log("[useRemoteChat] 收到内容:", delta);
 
                                 if (!hasStartedStreaming) {
-                                    assistantMessage = {
-                                        id: assistantId,
-                                        role: "assistant" as Role,
-                                        content: delta,
-                                    };
-                                    updateCurrentSession([...newMessages, assistantMessage]);
+                                    assistantMessage.content = delta;
                                     hasStartedStreaming = true;
                                 } else {
-                                    assistantMessage!.content += delta;
-                                    updateCurrentSession([...newMessages, assistantMessage!]);
+                                    assistantMessage.content += delta;
                                 }
+                                // 更新消息内容（assistant 消息已经在列表中）
+                                updateCurrentSession([
+                                    ...sessionMessages,
+                                    userMsg,
+                                    assistantMessage
+                                ]);
                             }
                         } catch (e) {
                             console.warn("[useRemoteChat] 解析JSON失败:", e, "数据:", data);

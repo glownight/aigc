@@ -108,7 +108,14 @@ export function useChat(
         );
 
         const userMsg: Message = { id: uid(), role: "user", content: text.trim() };
-        const newMessages = [...sessionMessages, userMsg];
+        const assistantId = uid();
+
+        // 立即创建用户消息和空的 assistant 消息，显示加载状态
+        const newMessages = [
+            ...sessionMessages,
+            userMsg,
+            { id: assistantId, role: "assistant" as Role, content: "" } // 空消息用于显示加载动画
+        ];
 
         if (retryCount === 0) {
             updateCurrentSession(newMessages);
@@ -148,8 +155,12 @@ export function useChat(
                 }));
 
             const eng = engineRef.current;
-            const assistantId = uid();
-            let assistantMessage: Message | null = null;
+            // assistantId 已在上面创建
+            let assistantMessage: Message = {
+                id: assistantId,
+                role: "assistant" as Role,
+                content: ""
+            };
             let hasStartedStreaming = false;
             let streamResp;
 
@@ -241,17 +252,17 @@ export function useChat(
                                 );
                                 if (truncatedDelta.length > 5) {
                                     if (!hasStartedStreaming) {
-                                        assistantMessage = {
-                                            id: assistantId,
-                                            role: "assistant" as Role,
-                                            content: truncatedDelta,
-                                        };
-                                        updateCurrentSession([...newMessages, assistantMessage]);
+                                        assistantMessage.content = truncatedDelta;
                                         hasStartedStreaming = true;
                                     } else {
-                                        assistantMessage!.content += truncatedDelta;
-                                        updateCurrentSession([...newMessages, assistantMessage!]);
+                                        assistantMessage.content += truncatedDelta;
                                     }
+                                    // 更新消息内容（assistant 消息已经在列表中）
+                                    updateCurrentSession([
+                                        ...sessionMessages,
+                                        userMsg,
+                                        assistantMessage
+                                    ]);
                                 }
                             }
                             break;
@@ -290,17 +301,17 @@ export function useChat(
                         // 更新内容
                         if (!hasStartedStreaming) {
                             console.log("[handleSend] 开始接收内容，创建助手消息");
-                            assistantMessage = {
-                                id: assistantId,
-                                role: "assistant" as Role,
-                                content: delta,
-                            };
-                            updateCurrentSession([...newMessages, assistantMessage]);
+                            assistantMessage.content = delta;
                             hasStartedStreaming = true;
                         } else {
-                            assistantMessage!.content += delta;
-                            updateCurrentSession([...newMessages, assistantMessage!]);
+                            assistantMessage.content += delta;
                         }
+                        // 更新消息内容（assistant 消息已经在列表中）
+                        updateCurrentSession([
+                            ...sessionMessages,
+                            userMsg,
+                            assistantMessage
+                        ]);
 
                         totalLength += delta.length;
                         lastContent = (assistantMessage?.content || "").slice(-100);
