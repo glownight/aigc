@@ -38,7 +38,22 @@ const SettingsModal = memo(function SettingsModal({
 
   const handleEngineChange = useCallback(
     (e: React.ChangeEvent<HTMLSelectElement>) => {
-      onEngineChange(e.target.value as EngineMode);
+      const newEngine = e.target.value as EngineMode;
+
+      // 检查浏览器是否支持 WebGPU
+      if (newEngine === "browser" && !("gpu" in navigator)) {
+        alert(
+          "⚠️ 浏览器不支持 WebGPU\n\n" +
+            "当前浏览器无法运行本地模型。\n\n" +
+            "请使用以下浏览器之一：\n" +
+            "• Chrome 119+ 版本\n" +
+            "• Edge 119+ 版本\n\n" +
+            "或继续使用远程 API 模式。"
+        );
+        return;
+      }
+
+      onEngineChange(newEngine);
     },
     [onEngineChange]
   );

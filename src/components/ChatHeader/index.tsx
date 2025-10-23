@@ -103,14 +103,14 @@ const ChatHeader = memo(function ChatHeader({
           <span className="ready-dot" data-ready={isEngineReady}></span>
           <span className="engine-indicator">{displayModel}</span>
         </div>
-        <button className="btn ghost" onClick={onLock} title="锁定应用">
-          🔒
+        <button className="btn danger" onClick={onNewSession}>
+          新会话
         </button>
         <button className="btn ghost" onClick={onShowSettings}>
           设置
         </button>
-        <button className="btn danger" onClick={onNewSession}>
-          新会话
+        <button className="btn ghost" onClick={onLock} title="锁定应用">
+          🔒
         </button>
       </div>
     </header>

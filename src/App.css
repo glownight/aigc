@@ -136,15 +136,15 @@ body {
   color: var(--text-muted);
   flex: 1;
   min-width: 0;
-  max-width: 300px;
+  max-width: 500px; /* 增大最大宽度 */
 }
 
 .progress-container {
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 2px;
-  max-width: 200px;
+  flex-direction: row; /* 改为横向排列 */
+  align-items: center;
+  gap: 8px;
+  max-width: 400px; /* 增大宽度 */
   flex: 1;
   min-width: 0;
 }
@@ -291,6 +291,7 @@ body {
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 12px;
+  max-width: 400px; /* 允许更宽的文本显示 */
 }
 
 .ready-dot {

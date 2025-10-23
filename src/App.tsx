@@ -10,7 +10,7 @@ import "./App.css";
 import { getRemoteApiConfig, getDefaultEngine } from "./config/env";
 
 // Hooks
-import { useLocalStorage } from "./hooks/useLocalStorage";
+import { useSessionStorage } from "./hooks/useSessionStorage";
 import { useSession } from "./hooks/useSession";
 import { useEngine } from "./hooks/useEngine";
 import { useChat } from "./hooks/useChat";
@@ -24,6 +24,7 @@ import ChatMessages from "./components/ChatMessages";
 import ChatComposer from "./components/ChatComposer";
 import SettingsModal from "./components/SettingsModal";
 import LockScreen from "./components/LockScreen";
+import ConfirmModal from "./components/ConfirmModal";
 
 // Types
 import type {
@@ -40,7 +41,48 @@ function App() {
     console.log("=".repeat(60));
     console.log("[App] 📱 应用已加载");
     console.log("[App] 🔧 当前路径:", window.location.pathname);
+    console.log("[App] 💾 存储模式: sessionStorage（会话级存储）");
+    console.log("[App] ⚠️  关闭标签页后所有数据将自动清除");
     console.log("=".repeat(60));
+
+    // 检查浏览器兼容性
+    const checkBrowserCompatibility = () => {
+      const isWebGPUSupported = "gpu" in navigator;
+      console.log("[App] 🔍 浏览器兼容性检查:");
+      console.log("  • WebGPU 支持:", isWebGPUSupported ? "✅ 是" : "❌ 否");
+
+      if (!isWebGPUSupported) {
+        console.warn("[App] ⚠️  浏览器不支持 WebGPU，无法使用本地模型");
+        console.warn(
+          "[App] 💡 建议：使用 Chrome/Edge 119+ 版本，或使用远程 API 模式"
+        );
+      }
+
+      console.log(
+        "  • User Agent:",
+        navigator.userAgent.substring(0, 50) + "..."
+      );
+    };
+    checkBrowserCompatibility();
+
+    // 清理旧的 localStorage 数据（迁移到 sessionStorage 后）
+    const oldKeys = [
+      "aigc.sessions",
+      "aigc.engine",
+      "aigc.theme",
+      "aigc.browserModel",
+      "aigc.remoteApiConfig",
+    ];
+    let cleanedCount = 0;
+    oldKeys.forEach((key) => {
+      if (localStorage.getItem(key)) {
+        localStorage.removeItem(key);
+        cleanedCount++;
+      }
+    });
+    if (cleanedCount > 0) {
+      console.log(`[App] 🧹 已清理 ${cleanedCount} 个旧的 localStorage 数据`);
+    }
   }, []);
 
   // 锁屏状态 - 检查是否已解锁
@@ -61,8 +103,8 @@ function App() {
     new Set()
   );
 
-  // 持久化配置
-  const [sessionManager, setSessionManager] = useLocalStorage<SessionManager>(
+  // 会话级存储配置（关闭标签页后自动清除）
+  const [sessionManager, setSessionManager] = useSessionStorage<SessionManager>(
     "aigc.sessions",
     {
       sessions: [],
@@ -70,42 +112,29 @@ function App() {
     }
   );
 
-  // 引擎模式：生产环境强制使用 remote，开发环境允许切换
+  // 引擎模式：默认使用 remote，允许用户自由切换
   const defaultEngineMode = getDefaultEngine();
-  const isProd = import.meta.env.PROD;
-  
-  // 生产环境：强制使用 remote，不使用 localStorage
-  // 开发环境：允许用户选择，使用 localStorage 保存
-  const [engine, setEngine] = useLocalStorage<EngineMode>(
+
+  // 允许用户选择引擎模式，使用会话存储
+  const [engine, setEngine] = useSessionStorage<EngineMode>(
     "aigc.engine",
     defaultEngineMode
   );
 
-  // 生产环境强制使用 remote 模式（忽略 localStorage）
-  useEffect(() => {
-    if (isProd && engine !== "remote") {
-      console.log("[App] 🔒 生产环境强制使用远程模式");
-      setEngine("remote");
-    } else if (defaultEngineMode === "remote" && engine !== "remote") {
-      console.log("[App] 检测到 API 配置，切换到远程模式");
-      setEngine("remote");
-    }
-  }, [isProd, defaultEngineMode, engine, setEngine]);
+  const [theme, setTheme] = useSessionStorage<Theme>("aigc.theme", "black");
 
-  const [theme, setTheme] = useLocalStorage<Theme>("aigc.theme", "black");
-
-  const [browserModel, setBrowserModel] = useLocalStorage(
+  const [browserModel, setBrowserModel] = useSessionStorage(
     "aigc.browserModel",
     "Qwen2.5-0.5B-Instruct-q4f32_1-MLC"
   );
 
   const [remoteApiConfig, setRemoteApiConfig] =
-    useLocalStorage<RemoteApiConfig>(
+    useSessionStorage<RemoteApiConfig>(
       "aigc.remoteApiConfig",
       getRemoteApiConfig() // 从环境变量读取配置
     );
 
-  // 🔧 强制更新 API 配置：如果环境变量有配置，覆盖 localStorage
+  // 🔧 强制更新 API 配置：如果环境变量有配置，覆盖 sessionStorage
   useEffect(() => {
     const envConfig = getRemoteApiConfig();
     if (envConfig.apiKey && envConfig.apiKey !== remoteApiConfig.apiKey) {
@@ -143,11 +172,24 @@ function App() {
   const sessionMessages = currentSession?.messages || defaultMessages;
 
   // 引擎管理
-  const { engineRef, engineReady, progressText, setProgressText } = useEngine(
-    engine,
-    browserModel,
-    downloadPaused
-  );
+  const {
+    engineRef,
+    engineReady,
+    progressText,
+    setProgressText,
+    initError,
+    retry,
+  } = useEngine(engine, browserModel, downloadPaused);
+
+  // 下载失败确认弹窗
+  const [showRetryModal, setShowRetryModal] = useState(false);
+
+  // 当有初始化错误时显示弹窗
+  useEffect(() => {
+    if (initError && engine === "browser") {
+      setShowRetryModal(true);
+    }
+  }, [initError, engine]);
 
   // 聊天逻辑 - 根据引擎模式选择
   const browserChat = useChat(
@@ -175,8 +217,8 @@ function App() {
   const suggestions = useMemo(
     () => [
       "介绍一下你自己",
-      "帮我总结这段文字",
-      "把这个段落润色得更专业",
+      "你的能力边界是什么",
+      "历史上的今天发生了什么",
       "生成一份周报提纲",
     ],
     []
@@ -421,6 +463,25 @@ function App() {
           onThemeChange={setTheme}
           onModelChange={setBrowserModel}
           onRemoteApiConfigChange={setRemoteApiConfig}
+        />
+      )}
+
+      {/* 下载失败确认弹窗 */}
+      {showRetryModal && initError && (
+        <ConfirmModal
+          title="⚠️ 浏览器本地模型加载失败"
+          message={`${initError}\n\n━━━━━━━━━━━━━━━━━━\n\n🔄 点击「重试」：重新尝试加载本地模型\n🌐 点击「切换远程」：使用远程 API（推荐）`}
+          confirmText="重试"
+          cancelText="切换远程"
+          onConfirm={() => {
+            setShowRetryModal(false);
+            retry();
+          }}
+          onCancel={() => {
+            setShowRetryModal(false);
+            setEngine("remote"); // 切换到远程模式
+            console.log("[App] 用户选择切换到远程 API 模式");
+          }}
         />
       )}
     </div>

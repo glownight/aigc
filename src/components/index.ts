@@ -10,4 +10,5 @@ export { default as ChatComposer } from "./ChatComposer";
 export { default as SettingsModal } from "./SettingsModal";
 export { default as LockScreen } from "./LockScreen";
 export { default as ErrorBoundary } from "./ErrorBoundary";
+export { default as ConfirmModal } from "./ConfirmModal";
 

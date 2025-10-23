@@ -13,6 +13,8 @@ export function useEngine(
 ) {
     const [engineReady, setEngineReady] = useState(false);
     const [progressText, setProgressText] = useState("");
+    const [initError, setInitError] = useState<string | null>(null);
+    const [retryCount, setRetryCount] = useState(0);
     const engineRef = useRef<any | null>(null);
 
     useEffect(() => {
@@ -20,6 +22,7 @@ export function useEngine(
             engineRef.current = null;
             setEngineReady(false);
             setProgressText("");
+            setInitError(null);
             return;
         }
 
@@ -30,12 +33,21 @@ export function useEngine(
 
         let cancelled = false;
         setEngineReady(false);
+        setInitError(null); // 清除之前的错误
         setProgressText(
             "首次下载会要约234MB数据，请耐心等待。后续使用将会非常快速！"
         );
 
         (async () => {
             try {
+                // 🔍 检查浏览器兼容性
+                if (!navigator.gpu) {
+                    const errorMsg = "浏览器不支持 WebGPU，无法运行本地模型。请使用 Chrome/Edge 119+ 版本，或切换到远程 API 模式。";
+                    setProgressText(`初始化失败：${errorMsg}`);
+                    setInitError(errorMsg);
+                    return;
+                }
+
                 const singleton = getEngineSingleton();
 
                 // 若已有单例且模型一致，直接复用
@@ -109,7 +121,20 @@ export function useEngine(
                 const singleton = getEngineSingleton();
                 singleton.creating = null;
                 if (!cancelled) {
-                    setProgressText(`初始化失败：${e?.message || e}`);
+                    let errorMsg = e?.message || String(e);
+
+                    // 🔍 提供更友好的错误提示
+                    if (errorMsg.includes("Failed to fetch")) {
+                        errorMsg = "网络连接失败，无法下载模型文件。\n\n可能原因：\n1. WebLLM 的 CDN 在国内访问受限\n2. 网络连接不稳定\n3. 防火墙阻止了下载\n\n建议：切换到远程 API 模式";
+                    } else if (errorMsg.includes("WebGPU")) {
+                        errorMsg = `WebGPU 错误：${errorMsg}\n\n请确保使用 Chrome/Edge 119+ 版本`;
+                    } else if (errorMsg.includes("quota")) {
+                        errorMsg = "浏览器存储空间不足，请清理缓存后重试";
+                    }
+
+                    console.error("[useEngine] 初始化错误:", e);
+                    setProgressText(`初始化失败：${errorMsg}`);
+                    setInitError(errorMsg); // 设置错误状态
                 }
             }
         })();
@@ -117,13 +142,20 @@ export function useEngine(
         return () => {
             cancelled = true;
         };
-    }, [engine, browserModel, downloadPaused]);
+    }, [engine, browserModel, downloadPaused, retryCount]); // 添加retryCount依赖
+
+    // 重试函数
+    const retry = () => {
+        setRetryCount((prev) => prev + 1);
+    };
 
     return {
         engineRef,
         engineReady,
         progressText,
         setProgressText,
+        initError,
+        retry,
     };
 }
 
