@@ -196,7 +196,9 @@ export default defineConfig(({ mode }) => {
     // 性能优化
     esbuild: {
       // 生产环境移除 console
-      drop: isProd ? ['console', 'debugger'] : [],
+      // 🔍 临时保留 console 以便调试环境变量问题
+      // drop: isProd ? ['console', 'debugger'] : [],
+      drop: isProd ? ['debugger'] : [], // 只移除 debugger，保留 console
       // 压缩选项
       legalComments: 'none',
     },
