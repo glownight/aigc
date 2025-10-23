@@ -157,24 +157,42 @@ const SettingsModal = memo(function SettingsModal({
                   value={remoteApiConfig.model}
                   onChange={handleRemoteModelSelectChange}
                 >
-                  <option value="deepseek-chat">DeepSeek Chat</option>
-                  <option value="deepseek-reasoner">DeepSeek Reasoner</option>
+                  <option value="deepseek-chat">
+                    DeepSeek Chat（快速响应）
+                  </option>
+                  <option value="deepseek-reasoner">
+                    DeepSeek Reasoner（深度推理，较慢）
+                  </option>
                 </select>
                 <small
                   style={{
                     color: "#999",
                     fontSize: "12px",
-                    marginTop: "4px",
+                    marginTop: "8px",
+                    display: "block",
+                    lineHeight: "1.5",
+                  }}
+                >
+                  💡 <strong>Chat</strong>：快速响应，适合日常对话
+                  <br />
+                  🧠 <strong>Reasoner</strong>
+                  ：深度推理，适合复杂问题（响应较慢）
+                </small>
+                <small
+                  style={{
+                    color: "#999",
+                    fontSize: "12px",
+                    marginTop: "12px",
                     display: "block",
                   }}
                 >
-                  或输入自定义模型名称
+                  或输入自定义模型名称：
                 </small>
                 <input
                   type="text"
                   value={remoteApiConfig.model}
                   onChange={handleRemoteModelInputChange}
-                  placeholder="输入自定义模型名称"
+                  placeholder="如：gpt-4, claude-3等"
                   style={{ marginTop: "8px" }}
                 />
               </div>

@@ -10,3 +10,10 @@ interface ImportMetaEnv {
 interface ImportMeta {
     readonly env: ImportMetaEnv;
 }
+
+// WebGPU 类型声明
+interface Navigator {
+    readonly gpu?: {
+        requestAdapter(): Promise<any>;
+    };
+}

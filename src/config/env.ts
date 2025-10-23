@@ -18,7 +18,7 @@ export const ENV = {
         || "sk-wOAmGmUMNFVsosjkCm68Fg2wJE7ctTPZMx8q3EozUiT49zFi",
 
     REMOTE_API_MODEL: import.meta.env.VITE_REMOTE_API_MODEL
-        || "deepseek-reasoner",
+        || "deepseek-chat", // 默认使用 chat 模型（更快）
 
     // 默认引擎模式
     DEFAULT_ENGINE: (import.meta.env.VITE_DEFAULT_ENGINE as "browser" | "remote")
@@ -58,23 +58,34 @@ console.log("=".repeat(60));
 /**
  * 获取远程API配置
  */
+// 缓存配置对象，避免频繁打印日志
+let cachedConfig: ReturnType<typeof getRemoteApiConfig> | null = null;
+let configLogged = false;
+
 export function getRemoteApiConfig() {
+    // 如果已缓存，直接返回
+    if (cachedConfig) {
+        return cachedConfig;
+    }
+
     const config = {
         baseURL: ENV.REMOTE_API_BASE_URL,
         apiKey: ENV.REMOTE_API_KEY,
         model: ENV.REMOTE_API_MODEL,
     };
 
-    // 开发环境提示
-    if (ENV.IS_DEV) {
+    // 开发环境提示（只打印一次）
+    if (ENV.IS_DEV && !configLogged) {
         console.log("[Config] 🔧 开发环境配置:", {
             baseURL: config.baseURL,
             model: config.model,
             hasKey: config.apiKey.length > 0,
             keyPreview: config.apiKey ? `${config.apiKey.substring(0, 10)}...` : "未配置"
         });
+        configLogged = true;
     }
 
+    cachedConfig = config;
     return config;
 }
 
