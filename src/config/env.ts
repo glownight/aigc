@@ -1,17 +1,8 @@
 /**
  * 环境变量配置
  * 
- * 开发环境：使用下面的默认配置（方便调试）
- * 生产环境：使用环境变量（安全）
+ * 优先使用环境变量，如果没有则使用内置默认值
  */
-
-// ⚠️ 开发环境默认配置 - 仅用于开发调试
-// 生产环境请通过环境变量配置，不要在这里写真实密钥
-const DEV_DEFAULTS = {
-    BASE_URL: "https://api.deepseek.com",  // DeepSeek API 地址
-    API_KEY: "your-api-key-here",          // 🔑 在这里填写你的开发环境 API Key
-    MODEL: "deepseek-chat",                // 默认模型
-};
 
 // 判断是否为开发环境
 const isDev = import.meta.env.DEV;
