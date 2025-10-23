@@ -18,12 +18,9 @@ export function useRemoteChat(
     async function handleSend(text: string): Promise<void> {
         if (!(text.trim().length > 0) || loading) return;
 
-        console.log("[useRemoteChat] 开始发送请求到远程API...");
-        console.log("[useRemoteChat] API配置:", {
-            baseURL: apiConfig.baseURL,
-            model: apiConfig.model,
-            hasKey: !!apiConfig.apiKey
-        });
+        if (import.meta.env.DEV) {
+            console.log("[useRemoteChat] 🚀 开始请求:", apiConfig.model);
+        }
 
         const userMsg: Message = { id: uid(), role: "user", content: text.trim() };
         const assistantId = uid();
@@ -49,16 +46,12 @@ export function useRemoteChat(
                     content,
                 }));
 
-            console.log("[useRemoteChat] 发送消息:", sendMessages);
-
             // 确保URL格式正确
             let apiURL = apiConfig.baseURL;
             if (!apiURL.endsWith('/')) {
                 apiURL += '/';
             }
             apiURL += 'v1/chat/completions';
-
-            console.log("[useRemoteChat] 请求URL:", apiURL);
 
             const requestBody = {
                 model: apiConfig.model,
@@ -71,28 +64,18 @@ export function useRemoteChat(
                 "Authorization": `Bearer ${apiConfig.apiKey}`,
             };
 
-            console.log("[useRemoteChat] 请求头:", {
-                "Content-Type": requestHeaders["Content-Type"],
-                "Authorization": `Bearer ${apiConfig.apiKey.substring(0, 10)}...`,
-            });
-            console.log("[useRemoteChat] 请求体:", {
-                model: requestBody.model,
-                messagesCount: requestBody.messages.length,
-                stream: requestBody.stream,
-            });
-
+            // 🚀 性能优化：添加 keepalive 和优先级
             const response = await fetch(apiURL, {
                 method: "POST",
                 headers: requestHeaders,
                 body: JSON.stringify(requestBody),
                 signal: controller.signal,
+                keepalive: true, // 保持连接以加快后续请求
             });
-
-            console.log("[useRemoteChat] 响应状态:", response.status);
 
             if (!response.ok) {
                 const errorText = await response.text();
-                console.error("[useRemoteChat] API错误:", errorText);
+                console.error("[useRemoteChat] ❌ API错误:", response.status, errorText);
                 throw new Error(`API请求失败: ${response.status} - ${errorText}`);
             }
 
@@ -110,13 +93,34 @@ export function useRemoteChat(
             };
             let hasStartedStreaming = false;
 
-            console.log("[useRemoteChat] 开始读取流式响应...");
+            // 🎯 性能优化：批量更新和节流
+            let pendingContent = "";
+            let lastUpdateTime = Date.now();
+            const UPDATE_INTERVAL = 50; // 50ms更新一次，保证流畅
+            const MIN_CHARS_TO_UPDATE = 3; // 至少累积3个字符再更新
+
+            const flushPendingContent = () => {
+                if (pendingContent) {
+                    assistantMessage.content += pendingContent;
+                    pendingContent = "";
+                    updateCurrentSession([
+                        ...sessionMessages,
+                        userMsg,
+                        { ...assistantMessage }
+                    ]);
+                    lastUpdateTime = Date.now();
+                }
+            };
 
             while (true) {
                 const { done, value } = await reader.read();
 
                 if (done) {
-                    console.log("[useRemoteChat] 流式响应读取完成");
+                    // 确保最后的内容被刷新
+                    flushPendingContent();
+                    if (import.meta.env.DEV) {
+                        console.log("[useRemoteChat] ✅ 响应完成，总长度:", assistantMessage.content.length);
+                    }
                     break;
                 }
 
@@ -128,7 +132,6 @@ export function useRemoteChat(
                         const data = line.slice(6);
 
                         if (data === "[DONE]") {
-                            console.log("[useRemoteChat] 收到完成信号");
                             continue;
                         }
 
@@ -137,34 +140,48 @@ export function useRemoteChat(
                             const delta = parsed?.choices?.[0]?.delta?.content || "";
 
                             if (delta) {
-                                console.log("[useRemoteChat] 收到内容:", delta);
+                                // 🚀 性能优化：只在开发环境且首次收到内容时打印
+                                if (!hasStartedStreaming && import.meta.env.DEV) {
+                                    console.log("[useRemoteChat] ✅ 开始接收流式响应");
+                                }
 
                                 if (!hasStartedStreaming) {
+                                    // 第一次收到内容，立即显示
                                     assistantMessage.content = delta;
                                     hasStartedStreaming = true;
+                                    updateCurrentSession([
+                                        ...sessionMessages,
+                                        userMsg,
+                                        { ...assistantMessage }
+                                    ]);
+                                    lastUpdateTime = Date.now();
                                 } else {
-                                    assistantMessage.content += delta;
+                                    // 累积内容
+                                    pendingContent += delta;
+
+                                    const now = Date.now();
+                                    const timeSinceLastUpdate = now - lastUpdateTime;
+
+                                    // 满足以下任一条件就更新UI：
+                                    // 1. 累积的字符超过阈值
+                                    // 2. 距离上次更新超过时间间隔
+                                    if (pendingContent.length >= MIN_CHARS_TO_UPDATE ||
+                                        timeSinceLastUpdate >= UPDATE_INTERVAL) {
+                                        flushPendingContent();
+                                    }
                                 }
-                                // 更新消息内容（assistant 消息已经在列表中）
-                                updateCurrentSession([
-                                    ...sessionMessages,
-                                    userMsg,
-                                    assistantMessage
-                                ]);
                             }
                         } catch (e) {
-                            console.warn("[useRemoteChat] 解析JSON失败:", e, "数据:", data);
+                            // 忽略解析错误，继续处理下一个chunk
                         }
                     }
                 }
             }
 
-            console.log("[useRemoteChat] 消息发送完成");
         } catch (e: any) {
-            console.error("[useRemoteChat] 请求处理出错:", e);
+            console.error("[useRemoteChat] ❌ 请求失败:", e?.message || e);
 
             if (controller.signal.aborted) {
-                console.log("[useRemoteChat] 请求被中止");
                 return;
             }
 
@@ -182,12 +199,9 @@ export function useRemoteChat(
 
     // 停止AI回答
     function handleStop() {
-        console.log("[useRemoteChat] 执行停止操作...");
-
         if (abortController) {
             abortController.abort();
         }
-
         setLoading(false);
         setAbortController(null);
     }

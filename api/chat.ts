@@ -27,18 +27,17 @@ export default async function handler(req: any, res: any) {
   }
 
   try {
-    const { messages, stream = false, model } = req.body || {}
+    const { messages, stream = true, model } = req.body || {}
     if (!Array.isArray(messages)) {
       res.status(400).json({ error: 'Invalid body: messages must be an array' })
       return
     }
 
-    // 仅透传必要字段
+    // 启用流式响应以提升响应速度
     const payload = {
       model: model || DEFAULT_MODEL,
       messages,
-      // 先返回非流式，前端已按非流式处理
-      stream: Boolean(stream && false),
+      stream: Boolean(stream),
     }
 
     const upstream = await fetch(UPSTREAM_URL, {
@@ -50,15 +49,42 @@ export default async function handler(req: any, res: any) {
       body: JSON.stringify(payload),
     })
 
-    const text = await upstream.text()
     const status = upstream.status
 
-    // 尝试解析为 JSON，失败则按文本返回
-    try {
-      const json = JSON.parse(text)
-      res.status(status).json(json)
-    } catch {
-      res.status(status).send(text)
+    // 如果是流式响应，直接透传
+    if (stream && upstream.body) {
+      res.status(status)
+      res.setHeader('Content-Type', 'text/event-stream')
+      res.setHeader('Cache-Control', 'no-cache')
+      res.setHeader('Connection', 'keep-alive')
+
+      const reader = upstream.body.getReader()
+      const encoder = new TextEncoder()
+      const decoder = new TextDecoder()
+
+      try {
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+
+          // 直接透传数据块
+          const chunk = decoder.decode(value, { stream: true })
+          res.write(chunk)
+        }
+        res.end()
+      } catch (streamErr) {
+        console.error('Stream error:', streamErr)
+        res.end()
+      }
+    } else {
+      // 非流式响应
+      const text = await upstream.text()
+      try {
+        const json = JSON.parse(text)
+        res.status(status).json(json)
+      } catch {
+        res.status(status).send(text)
+      }
     }
   } catch (err: any) {
     res.status(500).json({ error: err?.message || 'Upstream error' })

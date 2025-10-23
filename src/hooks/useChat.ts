@@ -167,8 +167,6 @@ export function useChat(
             console.log("[handleSend] 创建流式请求...");
 
             try {
-                await new Promise((resolve) => setTimeout(resolve, 100));
-
                 console.log("[handleSend] 调用引擎API...");
 
                 const timeoutPromise = new Promise((_, reject) => {
@@ -229,6 +227,27 @@ export function useChat(
                 let duplicateCount = 0;
                 let isQualityChecked = true;
 
+                // 🎯 性能优化：批量更新和节流
+                let pendingContent = "";
+                let lastUpdateTime = Date.now();
+                const UPDATE_INTERVAL = 50; // 50ms更新一次，保证流畅
+                const MIN_CHARS_TO_UPDATE = 3; // 至少累积3个字符再更新
+
+                const flushPendingContent = () => {
+                    if (pendingContent) {
+                        assistantMessage.content += pendingContent;
+                        totalLength += pendingContent.length;
+                        lastContent = assistantMessage.content.slice(-100);
+                        pendingContent = "";
+                        updateCurrentSession([
+                            ...sessionMessages,
+                            userMsg,
+                            { ...assistantMessage }
+                        ]);
+                        lastUpdateTime = Date.now();
+                    }
+                };
+
                 for await (const chunk of streamResp) {
                     chunkCount++;
 
@@ -241,30 +260,20 @@ export function useChat(
 
                     if (delta && delta.length >= STREAM_CONFIG.minChunkLength) {
                         // 检查长度限制
-                        if (totalLength + delta.length > STREAM_CONFIG.maxLength) {
+                        if (totalLength + pendingContent.length + delta.length > STREAM_CONFIG.maxLength) {
                             console.log("[handleSend] 达到最大长度限制，停止接收");
 
-                            const remainingLength = STREAM_CONFIG.maxLength - totalLength;
+                            const remainingLength = STREAM_CONFIG.maxLength - totalLength - pendingContent.length;
                             if (remainingLength > 10) {
                                 const truncatedDelta = truncateAtSentence(
                                     delta,
                                     remainingLength
                                 );
                                 if (truncatedDelta.length > 5) {
-                                    if (!hasStartedStreaming) {
-                                        assistantMessage.content = truncatedDelta;
-                                        hasStartedStreaming = true;
-                                    } else {
-                                        assistantMessage.content += truncatedDelta;
-                                    }
-                                    // 更新消息内容（assistant 消息已经在列表中）
-                                    updateCurrentSession([
-                                        ...sessionMessages,
-                                        userMsg,
-                                        assistantMessage
-                                    ]);
+                                    pendingContent += truncatedDelta;
                                 }
                             }
+                            flushPendingContent();
                             break;
                         }
 
@@ -277,6 +286,7 @@ export function useChat(
 
                             if (duplicateCount >= 3) {
                                 console.log("[handleSend] 连续重复内容过多，停止接收");
+                                flushPendingContent();
                                 break;
                             }
                             continue;
@@ -286,7 +296,7 @@ export function useChat(
 
                         // 质量检查
                         if (chunkCount % STREAM_CONFIG.qualityCheckInterval === 0) {
-                            const currentContent = (assistantMessage?.content || "") + delta;
+                            const currentContent = assistantMessage.content + pendingContent + delta;
                             const qualityCheck = checkContentQuality(currentContent);
 
                             if (!qualityCheck.isValid) {
@@ -294,6 +304,7 @@ export function useChat(
                                     `[handleSend] 内容质量检查失败: ${qualityCheck.reason}`
                                 );
                                 isQualityChecked = false;
+                                flushPendingContent();
                                 break;
                             }
                         }
@@ -303,20 +314,34 @@ export function useChat(
                             console.log("[handleSend] 开始接收内容，创建助手消息");
                             assistantMessage.content = delta;
                             hasStartedStreaming = true;
+                            updateCurrentSession([
+                                ...sessionMessages,
+                                userMsg,
+                                { ...assistantMessage }
+                            ]);
+                            totalLength += delta.length;
+                            lastContent = delta.slice(-100);
+                            lastUpdateTime = Date.now();
                         } else {
-                            assistantMessage.content += delta;
-                        }
-                        // 更新消息内容（assistant 消息已经在列表中）
-                        updateCurrentSession([
-                            ...sessionMessages,
-                            userMsg,
-                            assistantMessage
-                        ]);
+                            // 累积内容
+                            pendingContent += delta;
 
-                        totalLength += delta.length;
-                        lastContent = (assistantMessage?.content || "").slice(-100);
+                            const now = Date.now();
+                            const timeSinceLastUpdate = now - lastUpdateTime;
+
+                            // 满足以下任一条件就更新UI：
+                            // 1. 累积的字符超过阈值
+                            // 2. 距离上次更新超过时间间隔
+                            if (pendingContent.length >= MIN_CHARS_TO_UPDATE ||
+                                timeSinceLastUpdate >= UPDATE_INTERVAL) {
+                                flushPendingContent();
+                            }
+                        }
                     }
                 }
+
+                // 确保最后的内容被刷新
+                flushPendingContent();
 
                 // 最终质量检查
                 if (assistantMessage && isQualityChecked) {
@@ -345,8 +370,6 @@ export function useChat(
                 } catch (e) {
                     console.warn("[handleSend] 流式响应关闭时出错:", e);
                 }
-
-                await new Promise((resolve) => setTimeout(resolve, 200));
             }
         } catch (e: any) {
             console.error("[handleSend] 请求处理出错:", e);
@@ -368,15 +391,15 @@ export function useChat(
             setLoading(false);
             setAbortController(null);
 
-            setTimeout(() => {
-                setIsProcessing(false);
-                console.log("[handleSend] 处理状态已重置");
-            }, 300);
+            // 立即重置处理状态
+            setIsProcessing(false);
+            console.log("[handleSend] 处理状态已重置");
 
+            // 稍微延迟重置引擎状态，避免快速点击问题
             setTimeout(() => {
                 setEngineBusy(false);
                 console.log("[handleSend] 引擎状态已重置");
-            }, 1000);
+            }, 200);
         }
     }
 
@@ -392,24 +415,23 @@ export function useChat(
         setLoading(false);
         setAbortController(null);
 
-        setTimeout(() => {
-            console.log("[handleStop] 清理处理状态和空消息...");
-            setIsProcessing(false);
+        // 立即清理处理状态和空消息
+        console.log("[handleStop] 清理处理状态和空消息...");
+        setIsProcessing(false);
 
-            // 清理未完成的空AI消息
-            const cleanedMessages = sessionMessages.filter(
-                (m: Message) => !(m.role === "assistant" && m.content.trim() === "")
-            );
-            if (cleanedMessages.length !== sessionMessages.length) {
-                console.log("[handleStop] 清理了空的AI消息");
-                updateCurrentSession(cleanedMessages);
-            }
-        }, 300);
+        // 清理未完成的空AI消息
+        const cleanedMessages = sessionMessages.filter(
+            (m: Message) => !(m.role === "assistant" && m.content.trim() === "")
+        );
+        if (cleanedMessages.length !== sessionMessages.length) {
+            console.log("[handleStop] 清理了空的AI消息");
+            updateCurrentSession(cleanedMessages);
+        }
 
         setTimeout(() => {
             setEngineBusy(false);
             console.log("[handleStop] 引擎状态已重置，可以接受新请求");
-        }, 1000);
+        }, 200);
     }
 
     return {

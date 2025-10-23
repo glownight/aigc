@@ -43,6 +43,9 @@ const MessageItem = memo(function MessageItem({
   loading,
 }: MessageItemProps) {
   const roleLabel = message.role === "user" ? "我" : "AI";
+  // 判断是否正在流式输出：loading状态下，AI角色且有内容
+  const isStreaming =
+    loading && message.role === "assistant" && message.content.length > 0;
 
   return (
     <div className={`msg ${message.role}`}>
@@ -52,6 +55,7 @@ const MessageItem = memo(function MessageItem({
           <MessageContent
             content={message.content}
             role={message.role as "user" | "assistant"}
+            isStreaming={isStreaming}
           />
         ) : loading && message.role === "assistant" ? (
           <div className="loading-indicator">
