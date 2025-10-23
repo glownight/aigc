@@ -18,13 +18,24 @@ const ChatMessages = memo(function ChatMessages({
   loading,
   listRef,
 }: ChatMessagesProps) {
-  // 过滤系统消息和空的 AI 消息
+  // 过滤系统消息和空的 AI 消息，以及欢迎消息（当有用户消息时）
   const visibleMessages = useMemo(() => {
+    // 检查是否有用户消息
+    const hasUserMessage = messages.some((m: Message) => m.role === "user");
+
     return messages.filter((m: Message) => {
       // 过滤掉系统消息
       if (m.role === "system") return false;
       // 过滤掉内容为空的 AI 消息
       if (m.role === "assistant" && !m.content?.trim()) return false;
+      // 如果已有用户消息，过滤掉欢迎消息
+      if (
+        hasUserMessage &&
+        m.role === "assistant" &&
+        m.content === "你好，我可以为你提供智能问答服务～"
+      ) {
+        return false;
+      }
       return true;
     });
   }, [messages]);
