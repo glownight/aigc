@@ -166,6 +166,16 @@ const SettingsModal = memo(function SettingsModal({
             </>
           )}
         </div>
+
+        {/* 底部按钮 */}
+        <div className="modal-footer">
+          <button className="btn ghost" onClick={onClose}>
+            取消
+          </button>
+          <button className="btn primary" onClick={onClose}>
+            确认
+          </button>
+        </div>
       </div>
     </div>
   );

@@ -229,7 +229,7 @@ body {
 }
 
 .progress-fill::after {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: 0;
@@ -245,8 +245,12 @@ body {
 }
 
 @keyframes shimmer {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
 }
 
 /* 响应式优化 */
@@ -254,26 +258,26 @@ body {
   .topbar-right {
     gap: 8px;
   }
-  
+
   .status-mini {
     gap: 6px;
     font-size: 11px;
     max-width: 200px;
   }
-  
+
   .progress-text {
     font-size: 10px;
   }
-  
+
   .progress-bar-mini {
     width: 60px;
     height: 2px;
   }
-  
+
   .loading-tips-compact {
     display: none; /* 移动端隐藏操作按钮 */
   }
-  
+
   .engine-indicator {
     font-size: 9px;
     padding: 2px 4px;
@@ -686,6 +690,19 @@ button:focus-visible {
 .modal-title {
   font-weight: 600;
   font-size: 18px;
+}
+
+.modal-footer {
+  padding: 20px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.modal-footer .btn {
+  min-width: 100px;
 }
 
 .settings {
