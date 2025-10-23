@@ -70,20 +70,27 @@ function App() {
     }
   );
 
-  // 引擎模式：优先使用环境变量配置，允许用户手动切换
+  // 引擎模式：生产环境强制使用 remote，开发环境允许切换
   const defaultEngineMode = getDefaultEngine();
+  const isProd = import.meta.env.PROD;
+  
+  // 生产环境：强制使用 remote，不使用 localStorage
+  // 开发环境：允许用户选择，使用 localStorage 保存
   const [engine, setEngine] = useLocalStorage<EngineMode>(
     "aigc.engine",
     defaultEngineMode
   );
 
-  // 如果环境配置了 API Key，强制使用 remote 模式（忽略 localStorage）
+  // 生产环境强制使用 remote 模式（忽略 localStorage）
   useEffect(() => {
-    if (defaultEngineMode === "remote" && engine !== "remote") {
+    if (isProd && engine !== "remote") {
+      console.log("[App] 🔒 生产环境强制使用远程模式");
+      setEngine("remote");
+    } else if (defaultEngineMode === "remote" && engine !== "remote") {
       console.log("[App] 检测到 API 配置，切换到远程模式");
       setEngine("remote");
     }
-  }, [defaultEngineMode, engine, setEngine]);
+  }, [isProd, defaultEngineMode, engine, setEngine]);
 
   const [theme, setTheme] = useLocalStorage<Theme>("aigc.theme", "black");
 
