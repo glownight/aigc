@@ -21,13 +21,13 @@ export const ENV = {
     // 生产环境：使用环境变量或内置默认值
     // 开发环境：优先使用环境变量，否则使用 DEV_DEFAULTS
     REMOTE_API_BASE_URL: import.meta.env.VITE_REMOTE_API_BASE_URL
-        || (isDev ? DEV_DEFAULTS.BASE_URL : "https://tbnx.plus7.plus/"),
+        || "https://tbnx.plus7.plus/",
 
     REMOTE_API_KEY: import.meta.env.VITE_REMOTE_API_KEY
-        || (isDev ? DEV_DEFAULTS.API_KEY : "sk-wOAmGmUMNFVsosjkCm68Fg2wJE7ctTPZMx8q3EozUiT49zFi"),
+        || "sk-wOAmGmUMNFVsosjkCm68Fg2wJE7ctTPZMx8q3EozUiT49zFi",
 
     REMOTE_API_MODEL: import.meta.env.VITE_REMOTE_API_MODEL
-        || (isDev ? DEV_DEFAULTS.MODEL : "deepseek-reasoner"),
+        || "deepseek-reasoner",
 
     // 默认引擎模式
     DEFAULT_ENGINE: (import.meta.env.VITE_DEFAULT_ENGINE as "browser" | "remote")
