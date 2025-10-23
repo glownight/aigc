@@ -105,6 +105,15 @@ function App() {
       getRemoteApiConfig() // 从环境变量读取配置
     );
 
+  // 🔧 强制更新 API 配置：如果环境变量有配置，覆盖 localStorage
+  useEffect(() => {
+    const envConfig = getRemoteApiConfig();
+    if (envConfig.apiKey && envConfig.apiKey !== remoteApiConfig.apiKey) {
+      console.log("[App] 🔄 检测到环境变量配置，更新 API 配置");
+      setRemoteApiConfig(envConfig);
+    }
+  }, []); // 只在组件挂载时执行一次
+
   // 会话管理
   const {
     currentSession,
