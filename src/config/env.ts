@@ -58,17 +58,24 @@ console.log("=".repeat(60));
 /**
  * 获取远程API配置
  */
+// 定义配置类型
+type RemoteApiConfigType = {
+    baseURL: string;
+    apiKey: string;
+    model: string;
+};
+
 // 缓存配置对象，避免频繁打印日志
-let cachedConfig: ReturnType<typeof getRemoteApiConfig> | null = null;
+let cachedConfig: RemoteApiConfigType | null = null;
 let configLogged = false;
 
-export function getRemoteApiConfig() {
+export function getRemoteApiConfig(): RemoteApiConfigType {
     // 如果已缓存，直接返回
     if (cachedConfig) {
         return cachedConfig;
     }
 
-    const config = {
+    const config: RemoteApiConfigType = {
         baseURL: ENV.REMOTE_API_BASE_URL,
         apiKey: ENV.REMOTE_API_KEY,
         model: ENV.REMOTE_API_MODEL,
