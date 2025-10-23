@@ -18,9 +18,15 @@ const ChatMessages = memo(function ChatMessages({
   loading,
   listRef,
 }: ChatMessagesProps) {
-  // 过滤系统消息，避免每次都重新计算
+  // 过滤系统消息和空的 AI 消息
   const visibleMessages = useMemo(() => {
-    return messages.filter((m: Message) => m.role !== "system");
+    return messages.filter((m: Message) => {
+      // 过滤掉系统消息
+      if (m.role === "system") return false;
+      // 过滤掉内容为空的 AI 消息
+      if (m.role === "assistant" && !m.content?.trim()) return false;
+      return true;
+    });
   }, [messages]);
 
   return (
@@ -28,6 +34,24 @@ const ChatMessages = memo(function ChatMessages({
       {visibleMessages.map((m: Message) => (
         <MessageItem key={m.id} message={m} loading={loading} />
       ))}
+      {/* 如果正在加载且最后一条不是 AI 消息，显示加载动画 */}
+      {loading &&
+        (visibleMessages.length === 0 ||
+          visibleMessages[visibleMessages.length - 1]?.role !==
+            "assistant") && (
+          <div className="msg assistant">
+            <div className="role">AI</div>
+            <div className="bubble">
+              <div className="loading-indicator">
+                <div className="typing-dots">
+                  <span></span>
+                  <span></span>
+                  <span></span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
     </div>
   );
 });
@@ -51,23 +75,11 @@ const MessageItem = memo(function MessageItem({
     <div className={`msg ${message.role}`}>
       <div className="role">{roleLabel}</div>
       <div className="bubble">
-        {message.content ? (
-          <MessageContent
-            content={message.content}
-            role={message.role as "user" | "assistant"}
-            isStreaming={isStreaming}
-          />
-        ) : loading && message.role === "assistant" ? (
-          <div className="loading-indicator">
-            <div className="typing-dots">
-              <span></span>
-              <span></span>
-              <span></span>
-            </div>
-          </div>
-        ) : (
-          ""
-        )}
+        <MessageContent
+          content={message.content}
+          role={message.role as "user" | "assistant"}
+          isStreaming={isStreaming}
+        />
       </div>
     </div>
   );

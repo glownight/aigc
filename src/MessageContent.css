@@ -26,10 +26,12 @@
 
 /* 🎯 流式输出时的动态光标效果 */
 .assistant-content.streaming::after {
-  content: "▋";
+  content: "│";
   color: #6baed6;
   animation: blink 1s step-end infinite;
   margin-left: 2px;
+  font-weight: 300;
+  font-size: 0.95em;
 }
 
 @keyframes blink {

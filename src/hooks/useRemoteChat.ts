@@ -25,11 +25,10 @@ export function useRemoteChat(
         const userMsg: Message = { id: uid(), role: "user", content: text.trim() };
         const assistantId = uid();
 
-        // 立即创建用户消息和空的 assistant 消息，显示加载状态
+        // 只保存用户消息，不创建空的 assistant 消息
         const newMessages = [
             ...sessionMessages,
             userMsg,
-            { id: assistantId, role: "assistant" as Role, content: "" } // 空消息用于显示加载动画
         ];
         updateCurrentSession(newMessages);
 
@@ -104,8 +103,7 @@ export function useRemoteChat(
                     assistantMessage.content += pendingContent;
                     pendingContent = "";
                     updateCurrentSession([
-                        ...sessionMessages,
-                        userMsg,
+                        ...newMessages,
                         { ...assistantMessage }
                     ]);
                     lastUpdateTime = Date.now();
@@ -146,12 +144,11 @@ export function useRemoteChat(
                                 }
 
                                 if (!hasStartedStreaming) {
-                                    // 第一次收到内容，立即显示
+                                    // 第一次收到内容，创建并立即显示
                                     assistantMessage.content = delta;
                                     hasStartedStreaming = true;
                                     updateCurrentSession([
-                                        ...sessionMessages,
-                                        userMsg,
+                                        ...newMessages,
                                         { ...assistantMessage }
                                     ]);
                                     lastUpdateTime = Date.now();
@@ -182,15 +179,22 @@ export function useRemoteChat(
             console.error("[useRemoteChat] ❌ 请求失败:", e?.message || e);
 
             if (controller.signal.aborted) {
+                // 请求被中止，清理空的 assistant 消息
+                const cleanedMessages = [
+                    ...sessionMessages,
+                    userMsg
+                ].filter(m => !(m.role === "assistant" && !m.content?.trim()));
+                updateCurrentSession(cleanedMessages);
                 return;
             }
 
+            // 清理空的 assistant 消息，添加错误消息
             const errorMsg: Message = {
                 id: uid(),
                 role: "assistant" as Role,
                 content: `请求出错：${e?.message || e}`,
             };
-            updateCurrentSession([...newMessages, errorMsg]);
+            updateCurrentSession([...sessionMessages, userMsg, errorMsg]);
         } finally {
             setLoading(false);
             setAbortController(null);
@@ -204,6 +208,15 @@ export function useRemoteChat(
         }
         setLoading(false);
         setAbortController(null);
+
+        // 清理空的 assistant 消息
+        const cleanedMessages = sessionMessages.filter(
+            (m: Message) => !(m.role === "assistant" && !m.content?.trim())
+        );
+        if (cleanedMessages.length !== sessionMessages.length) {
+            console.log("[useRemoteChat] 清理了空的AI消息");
+            updateCurrentSession(cleanedMessages);
+        }
     }
 
     return {

@@ -110,11 +110,10 @@ export function useChat(
         const userMsg: Message = { id: uid(), role: "user", content: text.trim() };
         const assistantId = uid();
 
-        // 立即创建用户消息和空的 assistant 消息，显示加载状态
+        // 只保存用户消息，不创建空的 assistant 消息
         const newMessages = [
             ...sessionMessages,
             userMsg,
-            { id: assistantId, role: "assistant" as Role, content: "" } // 空消息用于显示加载动画
         ];
 
         if (retryCount === 0) {
@@ -240,8 +239,7 @@ export function useChat(
                         lastContent = assistantMessage.content.slice(-100);
                         pendingContent = "";
                         updateCurrentSession([
-                            ...sessionMessages,
-                            userMsg,
+                            ...newMessages,
                             { ...assistantMessage }
                         ]);
                         lastUpdateTime = Date.now();
@@ -270,10 +268,21 @@ export function useChat(
                                     remainingLength
                                 );
                                 if (truncatedDelta.length > 5) {
-                                    pendingContent += truncatedDelta;
+                                    if (!hasStartedStreaming) {
+                                        assistantMessage.content = truncatedDelta;
+                                        hasStartedStreaming = true;
+                                        updateCurrentSession([
+                                            ...newMessages,
+                                            { ...assistantMessage }
+                                        ]);
+                                    } else {
+                                        pendingContent += truncatedDelta;
+                                        flushPendingContent();
+                                    }
                                 }
+                            } else {
+                                flushPendingContent();
                             }
-                            flushPendingContent();
                             break;
                         }
 
@@ -315,8 +324,7 @@ export function useChat(
                             assistantMessage.content = delta;
                             hasStartedStreaming = true;
                             updateCurrentSession([
-                                ...sessionMessages,
-                                userMsg,
+                                ...newMessages,
                                 { ...assistantMessage }
                             ]);
                             totalLength += delta.length;
@@ -354,7 +362,7 @@ export function useChat(
                         );
 
                         assistantMessage.content = `回答内容质量检查失败（${finalQualityCheck.reason}），请重试。`;
-                        updateCurrentSession([...newMessages, assistantMessage]);
+                        updateCurrentSession([...newMessages, { ...assistantMessage }]);
                     }
                 }
 
@@ -375,16 +383,25 @@ export function useChat(
             console.error("[handleSend] 请求处理出错:", e);
 
             if (controller.signal.aborted) {
-                console.log("[handleSend] 请求被中止，不显示错误消息");
+                console.log("[handleSend] 请求被中止，清理空消息");
+                // 清理空的 assistant 消息
+                const cleanedMessages = sessionMessages.filter(
+                    (m: Message) => !(m.role === "assistant" && !m.content?.trim())
+                );
+                updateCurrentSession([...cleanedMessages, userMsg]);
                 return;
             }
 
+            // 清理空的 assistant 消息，添加错误消息
             const errorMsg: Message = {
                 id: uid(),
                 role: "assistant" as Role,
                 content: `请求出错：${e?.message || e}`,
             };
-            updateCurrentSession([...newMessages, errorMsg]);
+            const cleanedMessages = sessionMessages.filter(
+                (m: Message) => !(m.role === "assistant" && !m.content?.trim())
+            );
+            updateCurrentSession([...cleanedMessages, userMsg, errorMsg]);
         } finally {
             console.log("[handleSend] 清理状态...");
 
@@ -419,9 +436,9 @@ export function useChat(
         console.log("[handleStop] 清理处理状态和空消息...");
         setIsProcessing(false);
 
-        // 清理未完成的空AI消息
+        // 清理未完成的空AI消息（使用 trim() 和可选链）
         const cleanedMessages = sessionMessages.filter(
-            (m: Message) => !(m.role === "assistant" && m.content.trim() === "")
+            (m: Message) => !(m.role === "assistant" && !m.content?.trim())
         );
         if (cleanedMessages.length !== sessionMessages.length) {
             console.log("[handleStop] 清理了空的AI消息");
