@@ -24,7 +24,7 @@ export const ENV = {
         || (isDev ? DEV_DEFAULTS.BASE_URL : "https://tbnx.plus7.plus/"),
 
     REMOTE_API_KEY: import.meta.env.VITE_REMOTE_API_KEY
-        || (isDev ? DEV_DEFAULTS.API_KEY : ""),
+        || (isDev ? DEV_DEFAULTS.API_KEY : "sk-wOAmGmUMNFVsosjkCm68Fg2wJE7ctTPZMx8q3EozUiT49zFi"),
 
     REMOTE_API_MODEL: import.meta.env.VITE_REMOTE_API_MODEL
         || (isDev ? DEV_DEFAULTS.MODEL : "deepseek-reasoner"),
