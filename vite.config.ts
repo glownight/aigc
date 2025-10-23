@@ -41,8 +41,8 @@ export default defineConfig(({ mode }) => {
       terserOptions: isProd
         ? {
           compress: {
-            // 移除 console 和 debugger（保留 error 和 warn）
-            drop_console: true,
+            // 🔍 临时保留所有 console 用于调试环境变量
+            drop_console: false,
             drop_debugger: true,
             // 移除无用的代码
             dead_code: true,
