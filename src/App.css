@@ -491,31 +491,10 @@ button:focus-visible {
 }
 
 .msg.assistant .bubble {
-  background: linear-gradient(
-    135deg,
-    var(--card),
-    color-mix(in oklab, var(--card) 95%, var(--primary) 5%)
-  );
+  background: var(--card);
   color: var(--text);
   border: 1px solid color-mix(in oklab, var(--border) 70%, var(--primary) 30%);
   position: relative;
-}
-
-.msg.assistant .bubble::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(
-    45deg,
-    transparent 49%,
-    rgba(var(--primary-rgb), 0.03) 50%,
-    transparent 51%
-  );
-  border-radius: inherit;
-  pointer-events: none;
 }
 
 /* 加载指示器样式 */
