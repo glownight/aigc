@@ -60,9 +60,31 @@ const SettingsModal = memo(function SettingsModal({
 
   const handleModelChange = useCallback(
     (e: React.ChangeEvent<HTMLSelectElement>) => {
-      onModelChange(e.target.value);
+      const newModel = e.target.value;
+      const currentModel = browserModel;
+
+      // 如果模型没有改变，直接返回
+      if (newModel === currentModel) {
+        return;
+      }
+
+      // 提示用户切换模型会重新下载
+      const confirmSwitch = window.confirm(
+        `🔄 切换浏览器模型\n\n` +
+          `当前: ${currentModel}\n` +
+          `新模型: ${newModel}\n\n` +
+          `⚠️ 注意：切换模型需要重新下载模型文件（约200-500MB），这可能需要一些时间。\n\n` +
+          `是否继续？`
+      );
+
+      if (confirmSwitch) {
+        onModelChange(newModel);
+      } else {
+        // 用户取消，不改变选择（强制刷新组件）
+        e.target.value = currentModel;
+      }
     },
-    [onModelChange]
+    [onModelChange, browserModel]
   );
 
   const handleBaseURLChange = useCallback(
@@ -127,9 +149,33 @@ const SettingsModal = memo(function SettingsModal({
               <label>浏览器模型</label>
               <select value={browserModel} onChange={handleModelChange}>
                 <option value="Qwen2.5-0.5B-Instruct-q4f32_1-MLC">
-                  Qwen2.5-0.5B
+                  Qwen2.5-0.5B（轻量级，约234MB）
+                </option>
+                <option value="Qwen2.5-1.5B-Instruct-q4f16_1-MLC">
+                  Qwen2.5-1.5B（平衡版，约900MB）
+                </option>
+                <option value="Llama-3.2-1B-Instruct-q4f16_1-MLC">
+                  Llama 3.2-1B（Meta出品，约600MB）
+                </option>
+                <option value="Phi-3.5-mini-instruct-q4f16_1-MLC">
+                  Phi-3.5-mini（Microsoft出品，约2.3GB）
+                </option>
+                <option value="gemma-2-2b-it-q4f16_1-MLC">
+                  Gemma-2-2B（Google出品，约1.5GB）
                 </option>
               </select>
+              <small
+                style={{
+                  color: "#999",
+                  fontSize: "12px",
+                  marginTop: "8px",
+                  display: "block",
+                  lineHeight: "1.5",
+                }}
+              >
+                💡
+                提示：首次使用需下载模型文件，建议从轻量级开始。模型越大，效果越好但下载时间越长。
+              </small>
             </div>
           ) : (
             <>

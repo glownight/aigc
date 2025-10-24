@@ -58,6 +58,16 @@ export function useEngine(
                     return;
                 }
 
+                // 🔄 如果模型不同，清理旧实例，准备加载新模型
+                if (singleton.engine && singleton.model !== browserModel) {
+                    console.log(`[useEngine] 模型切换: ${singleton.model} → ${browserModel}，清理旧实例`);
+                    singleton.engine = null;
+                    singleton.model = "";
+                    singleton.creating = null;
+                    engineRef.current = null;
+                    setProgressText(`正在切换到新模型: ${browserModel}...`);
+                }
+
                 // 如果正在创建，等待同一个 Promise
                 if (singleton.creating) {
                     setProgressText("模型正在准备（共享创建过程）…");
