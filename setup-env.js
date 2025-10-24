@@ -22,7 +22,8 @@ VITE_REMOTE_API_BASE_URL=https://tbnx.plus7.plus/
 VITE_REMOTE_API_KEY=sk-wOAmGmUMNFVsosjkCm68Fg2wJE7ctTPZMx8q3EozUiT49zFi
 
 # 默认模型 / Default Model
-# 可选: deepseek-chat, deepseek-reasoner
+# 可选: deepseek-chat, deepseek-r1, deepseek-r1-250528, deepseek-reasoner, 
+#       deepseek-reasoner-all, deepseek-v3, deepseek-v3-250324
 VITE_REMOTE_API_MODEL=deepseek-chat
 
 # 默认引擎模式 / Default Engine Mode

@@ -160,8 +160,19 @@ const SettingsModal = memo(function SettingsModal({
                   <option value="deepseek-chat">
                     DeepSeek Chat（快速响应）
                   </option>
+                  <option value="deepseek-r1">DeepSeek R1（推理模型）</option>
+                  <option value="deepseek-r1-250528">
+                    DeepSeek R1-250528（推理模型特定版本）
+                  </option>
                   <option value="deepseek-reasoner">
                     DeepSeek Reasoner（深度推理，较慢）
+                  </option>
+                  <option value="deepseek-reasoner-all">
+                    DeepSeek Reasoner All（完整推理）
+                  </option>
+                  <option value="deepseek-v3">DeepSeek V3（最新版本）</option>
+                  <option value="deepseek-v3-250324">
+                    DeepSeek V3-250324（V3特定版本）
                   </option>
                 </select>
                 <small
