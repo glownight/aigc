@@ -1,0 +1,16 @@
+/* ConfirmModal 特定样式 */
+
+.confirm-modal {
+  max-width: 450px;
+}
+
+.confirm-content {
+  padding: 20px;
+  line-height: 1.6;
+  color: var(--text);
+}
+
+.confirm-content p {
+  margin: 0;
+  white-space: pre-wrap; /* 保留换行 */
+}

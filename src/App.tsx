@@ -1,321 +1,491 @@
-// 预加载 web-llm 模块，加快初始化（在页面 JS 加载后立即开始请求模块资源）
-const webllmModulePromise = import('@mlc-ai/web-llm')
-// 在全局保存一个引擎单例，避免在 HMR/路由切换/二次进入页面时重复初始化
-const __g: any = globalThis as any
-if (!__g.__mlc_singleton) {
-  __g.__mlc_singleton = { engine: null as any, model: '', creating: null as Promise<any> | null }
-}
+/**
+ * 主应用组件 - 重构后的版本
+ * 采用模块化架构，提高代码可维护性和可读性
+ */
 
-import { useEffect, useMemo, useRef, useState } from 'react'
-import './App.css'
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import "./App.css";
 
-export type Role = 'user' | 'assistant' | 'system'
-export type Message = { id: string; role: Role; content: string }
-export type EngineMode = 'remote' | 'browser'
+// Config
+import { getRemoteApiConfig, getDefaultEngine } from "./config/env";
 
-const uid = () => Math.random().toString(36).slice(2)
+// Hooks
+import { useSessionStorage } from "./hooks/useSessionStorage";
+import { useSession } from "./hooks/useSession";
+import { useEngine } from "./hooks/useEngine";
+import { useChat } from "./hooks/useChat";
+import { useRemoteChat } from "./hooks/useRemoteChat";
 
-function useLocalStorage<T>(key: string, initial: T) {
-  const [val, setVal] = useState<T>(() => {
-    const raw = localStorage.getItem(key)
-    return raw ? (JSON.parse(raw) as T) : initial
-  })
-  useEffect(() => {
-    localStorage.setItem(key, JSON.stringify(val))
-  }, [key, val])
-  return [val, setVal] as const
-}
+// Components
+import ChatHeader from "./components/ChatHeader";
+import ChatSidebar from "./components/ChatSidebar";
+import SuggestionCards from "./components/SuggestionCards";
+import ChatMessages from "./components/ChatMessages";
+import ChatComposer from "./components/ChatComposer";
+import SettingsModal from "./components/SettingsModal";
+import LockScreen from "./components/LockScreen";
+import ConfirmModal from "./components/ConfirmModal";
+
+// Types
+import type {
+  EngineMode,
+  SessionManager,
+  Theme,
+  Message,
+  RemoteApiConfig,
+} from "./types";
 
 function App() {
-  const [messages, setMessages] = useState<Message[]>([
-    { id: uid(), role: 'system', content: '你是一个有帮助的智能助手。' },
-    { id: uid(), role: 'assistant', content: '你好，我可以为你提供智能问答服务～' },
-  ])
-  const [input, setInput] = useState('')
-
-  // 强制仅使用“浏览器小模型”
-  const [engine, setEngine] = useLocalStorage<EngineMode>('aigc.engine', 'browser')
-
-  // 主题（采用 iPhone 15 配色：blue/pink/green/yellow/black）
-  const [theme, setTheme] = useLocalStorage<'blue' | 'pink' | 'green' | 'yellow' | 'black'>('aigc.theme', 'black')
-
-  // 远程 API 配置（不再使用，仅保留类型占位，避免变更多处逻辑）
-  // const [apiBase] = useLocalStorage('aigc.apiBase', 'https://api.openai.com')
-  // const [apiKey] = useLocalStorage('aigc.apiKey', '')
-  // const [model] = useLocalStorage('aigc.model', 'gpt-3.5-turbo')
-  const [stream, setStream] = useLocalStorage('aigc.stream', true)
-
-  // 浏览器小模型（web-llm）配置（仅保留体积最小的选项，避免误选大模型导致初始化耗时）
-  const [browserModel, setBrowserModel] = useLocalStorage(
-    'aigc.browserModel',
-    'qwen2.5-0.5b-instruct-q4f32_1-MLC'
-  )
-  // 模型来源：默认在线源 / 本地内置路径
-  const [modelSource, setModelSource] = useLocalStorage<'default' | 'local'>('aigc.modelSource', 'default')
-  // 当选择“本地”时，配置模型根路径与 wasm 库路径（可放 public/models 下）
-  const [localModelBase, setLocalModelBase] = useLocalStorage(
-    'aigc.localModelBase',
-    '/models/qwen2.5-0.5b-instruct-q4f32_1-MLC'
-  )
-  const [localModelLib, setLocalModelLib] = useLocalStorage(
-    'aigc.localModelLib',
-    '/models/qwen2.5-0.5b-instruct-q4f32_1-MLC/model.wasm'
-  )
-
-  const engineRef = useRef<any | null>(null)
-  const [engineReady, setEngineReady] = useState(false)
-  const [progressText, setProgressText] = useState('')
-
-  const [loading, setLoading] = useState(false)
-  const listRef = useRef<HTMLDivElement>(null)
-
-  // 始终滚到底部
+  // 🔍 打印配置信息（在组件挂载后）
   useEffect(() => {
-    listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: 'smooth' })
-  }, [messages, loading])
+    console.log("=".repeat(60));
+    console.log("[App] 📱 应用已加载");
+    console.log("[App] 🔧 当前路径:", window.location.pathname);
+    console.log("[App] 💾 存储模式: sessionStorage（会话级存储）");
+    console.log("[App] ⚠️  关闭标签页后所有数据将自动清除");
+    console.log("=".repeat(60));
 
-  // 启动时强制本地小模型（覆盖旧的 localStorage 值）并立即初始化
-  useEffect(() => {
-    if (engine !== 'browser') setEngine('browser')
-  }, [])
+    // 检查浏览器兼容性
+    const checkBrowserCompatibility = () => {
+      const isWebGPUSupported = "gpu" in navigator;
+      console.log("[App] 🔍 浏览器兼容性检查:");
+      console.log("  • WebGPU 支持:", isWebGPUSupported ? "✅ 是" : "❌ 否");
 
-  // 初始化/重建 web-llm 引擎
-  useEffect(() => {
-    if (engine !== 'browser') {
-      engineRef.current = null
-      setEngineReady(false)
-      setProgressText('')
-      return
-    }
-    let cancelled = false
-    setEngineReady(false)
-    setProgressText(
-      modelSource === 'local'
-        ? '从本地内置模型源加载…（首次访问会拷贝到浏览器缓存）'
-        : '准备加载本地模型…（首次会下载较大文件，请耐心等待，二次打开将使用缓存）'
-    )
-
-    ;(async () => {
-      try {
-        // 若已有单例且模型一致，直接复用，几乎无等待
-        if (__g.__mlc_singleton.engine && __g.__mlc_singleton.model === browserModel) {
-          engineRef.current = __g.__mlc_singleton.engine
-          setEngineReady(true)
-          setProgressText('模型已就绪（复用缓存实例）。')
-          return
-        }
-        // 如果正在创建，等待同一个 Promise，避免并行创建
-        if (__g.__mlc_singleton.creating) {
-          setProgressText('模型正在准备（共享创建过程）…')
-          const eng = await __g.__mlc_singleton.creating
-          if (!cancelled) {
-            engineRef.current = eng
-            setEngineReady(true)
-            setProgressText('模型已就绪。')
-          }
-          return
-        }
-
-        const mod = await webllmModulePromise
-        const { CreateMLCEngine } = mod as any
-
-        // 当选择“本地内置”时，使用 appConfig.model_list 覆盖模型与 wasm 库的 URL
-        const engineConfig =
-          modelSource === 'local'
-            ? {
-                appConfig: {
-                  model_list: [
-                    {
-                      model: localModelBase,
-                      model_id: browserModel,
-                      model_lib: localModelLib,
-                    },
-                  ],
-                },
-              }
-            : undefined
-
-        const creating = CreateMLCEngine(
-          browserModel,
-          {
-            initProgressCallback: (report: any) => {
-              if (cancelled) return
-              const t = report?.text || JSON.stringify(report)
-              setProgressText(t)
-            },
-          },
-          engineConfig
-        )
-        __g.__mlc_singleton.creating = creating
-        const eng = await creating
-        if (!cancelled) {
-          __g.__mlc_singleton.engine = eng
-          __g.__mlc_singleton.model = browserModel
-          __g.__mlc_singleton.creating = null
-          engineRef.current = eng
-          setEngineReady(true)
-          setProgressText('模型已就绪，可以开始对话。')
-        }
-      } catch (e: any) {
-        __g.__mlc_singleton.creating = null
-        if (!cancelled) {
-          setProgressText(`初始化失败：${e?.message || e}`)
-        }
+      if (!isWebGPUSupported) {
+        console.warn("[App] ⚠️  浏览器不支持 WebGPU，无法使用本地模型");
+        console.warn(
+          "[App] 💡 建议：使用 Chrome/Edge 119+ 版本，或使用远程 API 模式",
+        );
       }
-    })()
 
-    return () => {
-      cancelled = true
-    }
-  }, [engine, browserModel, modelSource, localModelBase, localModelLib])
+      console.log(
+        "  • User Agent:",
+        navigator.userAgent.substring(0, 50) + "...",
+      );
+    };
+    checkBrowserCompatibility();
 
-  const canSend = useMemo(() => input.trim().length > 0 && !loading, [input, loading])
-
-  async function handleSend() {
-    if (!canSend) return
-    const userMsg: Message = { id: uid(), role: 'user', content: input.trim() }
-    setMessages((m) => [...m, userMsg])
-    setInput('')
-
-    try {
-      setLoading(true)
-
-      if (!engineReady || !engineRef.current) {
-        setMessages((m) => [
-          ...m,
-          { id: uid(), role: 'assistant', content: '本地模型初始化中，请稍候…' },
-        ])
-        return
+    // 清理旧的 localStorage 数据（迁移到 sessionStorage 后）
+    const oldKeys = [
+      "aigc.sessions",
+      "aigc.engine",
+      "aigc.theme",
+      "aigc.browserModel",
+      "aigc.remoteApiConfig",
+    ];
+    let cleanedCount = 0;
+    oldKeys.forEach((key) => {
+      if (localStorage.getItem(key)) {
+        localStorage.removeItem(key);
+        cleanedCount++;
       }
-      const eng = engineRef.current
-      const sendMessages = messages.concat(userMsg).map(({ role, content }) => ({ role, content }))
+    });
+    if (cleanedCount > 0) {
+      console.log(`[App] 🧹 已清理 ${cleanedCount} 个旧的 localStorage 数据`);
+    }
+  }, []);
 
-      if (stream) {
-        const assistantId = uid()
-        setMessages((m) => [...m, { id: assistantId, role: 'assistant', content: '' }])
-        const streamResp = await eng.chat.completions.create({
-          messages: sendMessages,
-          stream: true,
-        })
-        for await (const chunk of streamResp) {
-          const delta: string = chunk?.choices?.[0]?.delta?.content || ''
-          if (delta) {
-            setMessages((prev) =>
-              prev.map((mm) => (mm.id === assistantId ? { ...mm, content: mm.content + delta } : mm))
-            )
-          }
-        }
+  // 锁屏状态 - 检查是否已解锁
+  const [isLocked, setIsLocked] = useState(() => {
+    const unlockToken = sessionStorage.getItem("unlockToken");
+    return !unlockToken; // 如果没有解锁令牌，则处于锁定状态
+  });
+
+  // 基础状态
+  const [input, setInput] = useState("");
+  const [showSettings, setShowSettings] = useState(false);
+  const [showSidebar, setShowSidebar] = useState(false);
+  const [downloadPaused, setDownloadPaused] = useState(false);
+
+  // 批量删除功能状态
+  const [batchDeleteMode, setBatchDeleteMode] = useState(false);
+  const [selectedSessions, setSelectedSessions] = useState<Set<string>>(
+    new Set(),
+  );
+
+  // 会话级存储配置（关闭标签页后自动清除）
+  const [sessionManager, setSessionManager] = useSessionStorage<SessionManager>(
+    "aigc.sessions",
+    {
+      sessions: [],
+      currentSessionId: "",
+    },
+  );
+
+  // 引擎模式：默认使用 remote，允许用户自由切换
+  const defaultEngineMode = getDefaultEngine();
+
+  // 允许用户选择引擎模式，使用会话存储
+  const [engine, setEngine] = useSessionStorage<EngineMode>(
+    "aigc.engine",
+    defaultEngineMode,
+  );
+
+  const [theme, setTheme] = useSessionStorage<Theme>("aigc.theme", "black");
+
+  const [browserModel, setBrowserModel] = useSessionStorage(
+    "aigc.browserModel",
+    "Qwen2.5-0.5B-Instruct-q4f32_1-MLC",
+  );
+
+  const [remoteApiConfig, setRemoteApiConfig] =
+    useSessionStorage<RemoteApiConfig>(
+      "aigc.remoteApiConfig",
+      getRemoteApiConfig(), // 从环境变量读取配置
+    );
+
+  // 🔧 强制更新 API 配置：如果环境变量有配置，覆盖 sessionStorage
+  useEffect(() => {
+    const envConfig = getRemoteApiConfig();
+    if (envConfig.apiKey && envConfig.apiKey !== remoteApiConfig.apiKey) {
+      console.log("[App] 🔄 检测到环境变量配置，更新 API 配置");
+      setRemoteApiConfig(envConfig);
+    }
+  }, []); // 只在组件挂载时执行一次
+
+  // 会话管理
+  const {
+    currentSession,
+    sessionId,
+    createNewSession,
+    switchSession,
+    deleteSession,
+    updateCurrentSession,
+  } = useSession(sessionManager, setSessionManager);
+
+  // 获取当前会话消息
+  const defaultMessages: Message[] = useMemo(
+    () => [
+      {
+        id: Math.random().toString(36).slice(2),
+        role: "system",
+        content: "你是一个有帮助的AI智能助手。",
+      },
+      {
+        id: Math.random().toString(36).slice(2),
+        role: "assistant",
+        content: "你好，我可以为你提供智能问答服务～",
+      },
+    ],
+    [],
+  );
+  const sessionMessages = currentSession?.messages || defaultMessages;
+
+  // 引擎管理
+  const {
+    engineRef,
+    engineReady,
+    progressText,
+    setProgressText,
+    initError,
+    retry,
+  } = useEngine(engine, browserModel, downloadPaused);
+
+  // 下载失败确认弹窗
+  const [showRetryModal, setShowRetryModal] = useState(false);
+
+  // 当有初始化错误时显示弹窗
+  useEffect(() => {
+    if (initError && engine === "browser") {
+      setShowRetryModal(true);
+    }
+  }, [initError, engine]);
+
+  // 聊天逻辑 - 根据引擎模式选择
+  const browserChat = useChat(
+    engineRef,
+    engineReady,
+    browserModel,
+    sessionMessages,
+    updateCurrentSession,
+    setProgressText,
+    downloadPaused,
+    setDownloadPaused,
+  );
+
+  const remoteChat = useRemoteChat(
+    remoteApiConfig,
+    sessionMessages,
+    updateCurrentSession,
+  );
+
+  // 根据引擎模式选择对应的聊天逻辑
+  const { loading, canSend, handleSend, handleStop } =
+    engine === "browser" ? browserChat : remoteChat;
+
+  // 建议卡片
+  const suggestions = useMemo(
+    () => [
+      "介绍一下你自己",
+      "你的能力边界是什么",
+      "历史上的今天发生了什么",
+      "生成一份周报提纲",
+    ],
+    [],
+  );
+
+  // Refs
+  const listRef = useRef<HTMLDivElement>(null);
+
+  // 迁移兼容：老版本小写模型 ID 更正为官方大小写
+  useEffect(() => {
+    if (browserModel === "qwen2.5-0.5b-instruct-q4f32_1-MLC") {
+      setBrowserModel("Qwen2.5-0.5B-Instruct-q4f32_1-MLC");
+    }
+  }, [browserModel, setBrowserModel]);
+
+  // 启动提示
+  useEffect(() => {
+    if (engine === "browser" && !engineReady) {
+      setProgressText(
+        "首次使用需要下载AI模型缓存（约234MB），这是一次性操作。后续访问将秒开！",
+      );
+    }
+  }, [engine, engineReady]);
+
+  // 自动滚动到底部
+  useEffect(() => {
+    listRef.current?.scrollTo({
+      top: listRef.current.scrollHeight,
+      behavior: "smooth",
+    });
+  }, [sessionMessages, loading]);
+
+  // 批量删除相关函数 - 使用 useCallback 优化
+  const toggleBatchDeleteMode = useCallback(() => {
+    setBatchDeleteMode((prev) => !prev);
+    setSelectedSessions(new Set());
+  }, []);
+
+  const toggleSessionSelection = useCallback((id: string) => {
+    setSelectedSessions((prev) => {
+      const newSelected = new Set(prev);
+      if (newSelected.has(id)) {
+        newSelected.delete(id);
       } else {
-        const out = await eng.chat.completions.create({ messages: sendMessages })
-        const content: string = out?.choices?.[0]?.message?.content ?? ''
-        setMessages((m) => [...m, { id: uid(), role: 'assistant', content }])
+        newSelected.add(id);
       }
-    } catch (e: any) {
-      setMessages((m) => [
-        ...m,
-        { id: uid(), role: 'assistant', content: `请求出错：${e?.message || e}` },
-      ])
-    } finally {
-      setLoading(false)
-    }
-  }
+      return newSelected;
+    });
+  }, []);
 
-  function handleClear() {
-    setMessages([{ id: uid(), role: 'system', content: '你是一个有帮助的智能助手。' }])
+  const selectAllSessions = useCallback(() => {
+    const allSessionIds = new Set(sessionManager.sessions.map((s) => s.id));
+    setSelectedSessions(allSessionIds);
+  }, [sessionManager.sessions]);
+
+  const deselectAllSessions = useCallback(() => {
+    setSelectedSessions(new Set());
+  }, []);
+
+  const handleBatchDelete = useCallback(() => {
+    if (selectedSessions.size === 0) return;
+
+    const sessionsToKeep = sessionManager.sessions.filter(
+      (s) => !selectedSessions.has(s.id),
+    );
+
+    // 如果删除后没有会话了，创建一个新的
+    if (sessionsToKeep.length === 0) {
+      createNewSession();
+    } else {
+      const currentSessionDeleted = selectedSessions.has(
+        sessionManager.currentSessionId,
+      );
+      const newCurrentId = currentSessionDeleted
+        ? sessionsToKeep[0].id
+        : sessionManager.currentSessionId;
+
+      setSessionManager({
+        sessions: sessionsToKeep,
+        currentSessionId: newCurrentId,
+      });
+    }
+
+    setBatchDeleteMode(false);
+    setSelectedSessions(new Set());
+  }, [selectedSessions, sessionManager, createNewSession, setSessionManager]);
+
+  const handlePauseDownload = useCallback(() => {
+    setDownloadPaused(true);
+    setProgressText("已暂停，发送消息时自动继续");
+  }, [setProgressText]);
+
+  // 解锁处理
+  const handleUnlock = useCallback(() => {
+    setIsLocked(false);
+  }, []);
+
+  // 上锁处理
+  const handleLock = useCallback(() => {
+    // 清除解锁令牌
+    sessionStorage.removeItem("unlockToken");
+    // 设置锁定状态
+    setIsLocked(true);
+  }, []);
+
+  // 发送消息处理
+  const handleSendMessage = useCallback(() => {
+    if (input.trim()) {
+      handleSend(input);
+      setInput("");
+    }
+  }, [input, handleSend]);
+
+  // 自动锁定功能：2小时无操作自动上锁
+  useEffect(() => {
+    if (isLocked) return; // 如果已锁定，不需要监听
+
+    const AUTO_LOCK_TIME = 2 * 60 * 60 * 1000; // 2小时（毫秒）
+    let timeoutId: ReturnType<typeof setTimeout>;
+
+    // 重置计时器
+    const resetTimer = () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+      timeoutId = setTimeout(() => {
+        console.log("[自动锁定] 2小时无操作，自动锁定应用");
+        handleLock();
+      }, AUTO_LOCK_TIME);
+    };
+
+    // 用户交互事件列表
+    const events = [
+      "mousedown",
+      "mousemove",
+      "keypress",
+      "scroll",
+      "touchstart",
+      "click",
+    ];
+
+    // 监听所有交互事件
+    events.forEach((event) => {
+      document.addEventListener(event, resetTimer);
+    });
+
+    // 初始化计时器
+    resetTimer();
+
+    // 清理函数
+    return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+      events.forEach((event) => {
+        document.removeEventListener(event, resetTimer);
+      });
+    };
+  }, [isLocked]);
+
+  // 如果处于锁定状态，只显示锁屏
+  if (isLocked) {
+    return <LockScreen onUnlock={handleUnlock} />;
   }
 
   return (
     <div className={`app theme-${theme}`}>
-      <header className="header">
-        <h1>AIGC 智能问答（纯前端）</h1>
-        <div className="settings">
-          <label className="select">
-            主题
-            <select value={theme} onChange={(e) => setTheme(e.target.value as any)}>
-              <option value="blue">iPhone 15 蓝</option>
-              <option value="pink">iPhone 15 粉</option>
-              <option value="green">iPhone 15 绿</option>
-              <option value="yellow">iPhone 15 黄</option>
-              <option value="black">iPhone 15 黑</option>
-            </select>
-          </label>
+      {/* 头部导航 */}
+      <ChatHeader
+        progressText={progressText}
+        engineReady={engineReady}
+        browserModel={browserModel}
+        downloadPaused={downloadPaused}
+        engineMode={engine}
+        remoteModel={remoteApiConfig.model}
+        onToggleSidebar={() => setShowSidebar(!showSidebar)}
+        onShowSettings={() => setShowSettings(true)}
+        onNewSession={() => createNewSession(() => setShowSidebar(false))}
+        onPauseDownload={handlePauseDownload}
+        onLock={handleLock}
+      />
 
-          <label className="select">
-            本地小模型
-            <select value={browserModel} onChange={(e) => setBrowserModel(e.target.value)}>
-              <option value="qwen2.5-0.5b-instruct-q4f32_1-MLC">Qwen2.5 0.5B Instruct（默认，最小）</option>
-            </select>
-          </label>
+      {/* 会话列表侧边栏 */}
+      {showSidebar && (
+        <ChatSidebar
+          sessions={sessionManager.sessions}
+          currentSessionId={sessionId || sessionManager.currentSessionId}
+          batchDeleteMode={batchDeleteMode}
+          selectedSessions={selectedSessions}
+          onClose={() => setShowSidebar(false)}
+          onCreateNew={() => createNewSession(() => setShowSidebar(false))}
+          onSwitchSession={(id) =>
+            switchSession(id, () => setShowSidebar(false))
+          }
+          onDeleteSession={deleteSession}
+          onToggleBatchMode={toggleBatchDeleteMode}
+          onToggleSelection={toggleSessionSelection}
+          onSelectAll={selectAllSessions}
+          onDeselectAll={deselectAllSessions}
+          onBatchDelete={handleBatchDelete}
+        />
+      )}
 
-          <label className="select">
-            模型来源
-            <select value={modelSource} onChange={(e) => setModelSource(e.target.value as any)}>
-              <option value="default">默认在线源</option>
-              <option value="local">本地内置（public/）</option>
-            </select>
-          </label>
-
-          {modelSource === 'local' && (
-            <>
-              <input
-                style={{ minWidth: 260 }}
-                value={localModelBase}
-                onChange={(e) => setLocalModelBase(e.target.value)}
-                placeholder="模型根路径，例如 /models/qwen2.5-0.5b-instruct-q4f32_1-MLC"
-                title="模型资源根目录 URL（放在 public 下会以 /models/... 访问）"
-              />
-              <input
-                style={{ minWidth: 260 }}
-                value={localModelLib}
-                onChange={(e) => setLocalModelLib(e.target.value)}
-                placeholder="模型 wasm 库路径，例如 /models/.../model.wasm"
-                title="模型对应的 wasm 库 URL（放在 public 下）"
-              />
-            </>
-          )}
-
-          <label className="stream">
-            <input type="checkbox" checked={!!stream} onChange={(e) => setStream(e.target.checked)} /> 流式
-          </label>
-          <div className="progress">{progressText}</div>
-          <div className="badge" aria-live="polite">状态：{engineReady ? '就绪' : '未就绪'}</div>
-
-          <button onClick={handleClear}>清空</button>
-        </div>
-      </header>
-
+      {/* 主聊天区域 */}
       <main className="chat">
-        <div className="list" ref={listRef}>
-          {messages
-            .filter((m) => m.role !== 'system')
-            .map((m) => (
-              <div key={m.id} className={`msg ${m.role}`}>
-                <div className="role">{m.role === 'user' ? '我' : 'AI'}</div>
-                <div className="bubble">{m.content || (loading && m.role === 'assistant' ? '…' : '')}</div>
-              </div>
-            ))}
-          {loading && <div className="loading">AI 正在思考中…</div>}
-        </div>
+        {/* 建议卡片（仅在没有用户消息时显示） */}
+        {sessionMessages.filter((m: Message) => m.role === "user").length ===
+          0 && (
+          <SuggestionCards
+            suggestions={suggestions}
+            onSelect={(s) => handleSend(s)}
+          />
+        )}
+
+        {/* 消息列表 */}
+        <ChatMessages
+          messages={sessionMessages}
+          loading={loading}
+          listRef={listRef}
+        />
       </main>
 
-      <footer className="composer">
-        <textarea
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="请输入你的问题，回车发送，Shift+回车换行"
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-              e.preventDefault()
-              handleSend()
-            }
+      {/* 消息输入框 */}
+      <ChatComposer
+        input={input}
+        loading={loading}
+        canSend={canSend && input.trim().length > 0}
+        onInputChange={setInput}
+        onSend={handleSendMessage}
+        onStop={handleStop}
+      />
+
+      {/* 设置弹窗 */}
+      {showSettings && (
+        <SettingsModal
+          engine={engine}
+          theme={theme}
+          browserModel={browserModel}
+          remoteApiConfig={remoteApiConfig}
+          onClose={() => setShowSettings(false)}
+          onEngineChange={setEngine}
+          onThemeChange={setTheme}
+          onModelChange={setBrowserModel}
+          onRemoteApiConfigChange={setRemoteApiConfig}
+        />
+      )}
+
+      {/* 下载失败确认弹窗 */}
+      {showRetryModal && initError && (
+        <ConfirmModal
+          title="⚠️ 浏览器本地模型加载失败"
+          message={`${initError}\n\n━━━━━━━━━━━━━━━━━━\n\n🔄 点击「重试」：重新尝试加载本地模型\n🌐 点击「切换远程」：使用远程 API（推荐）`}
+          confirmText="重试"
+          cancelText="切换远程"
+          onConfirm={() => {
+            setShowRetryModal(false);
+            retry();
+          }}
+          onCancel={() => {
+            setShowRetryModal(false);
+            setEngine("remote"); // 切换到远程模式
+            console.log("[App] 用户选择切换到远程 API 模式");
           }}
         />
-        <button disabled={!canSend} onClick={handleSend}>
-          {loading ? '发送中…' : '发送'}
-        </button>
-      </footer>
+      )}
     </div>
-  )
+  );
 }
 
-export default App
+export default App;

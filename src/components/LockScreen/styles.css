@@ -1,0 +1,550 @@
+.lock-screen {
+  --bg-900: #05080f;
+  --bg-800: #0a1220;
+  --bg-700: #0f1b2d;
+  --line: rgba(100, 116, 139, 0.25);
+  --cyan: #22d3ee;
+  --cyan-strong: #06b6d4;
+  --cyan-soft: rgba(34, 211, 238, 0.2);
+  --text-main: #e9f3ff;
+  --text-muted: rgba(203, 213, 225, 0.78);
+  --danger: #fb7185;
+
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  padding: clamp(0.75rem, 2vw, 2rem);
+  color: var(--text-main);
+  background:
+    radial-gradient(1100px 650px at 12% -5%, rgba(14, 165, 233, 0.24), transparent 65%),
+    radial-gradient(900px 550px at 88% 105%, rgba(34, 211, 238, 0.16), transparent 72%),
+    linear-gradient(160deg, var(--bg-900) 0%, var(--bg-800) 48%, var(--bg-700) 100%);
+  font-family: "Space Grotesk", "Sora", "Segoe UI", sans-serif;
+  transition:
+    transform 0.8s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.lock-screen.unlocking {
+  opacity: 0;
+  transform: translateY(-100%);
+}
+
+.lock-screen::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    180deg,
+    rgba(148, 163, 184, 0.055) 0,
+    rgba(148, 163, 184, 0.055) 1px,
+    transparent 1px,
+    transparent 4px
+  );
+  opacity: 0.25;
+  pointer-events: none;
+}
+
+.lock-screen::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, transparent 25%, rgba(0, 0, 0, 0.45) 100%);
+  pointer-events: none;
+}
+
+.background-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(2, 6, 23, 0.1) 0%, rgba(2, 6, 23, 0.58) 100%);
+}
+
+.tech-grid {
+  position: absolute;
+  inset: -20%;
+  background-image:
+    linear-gradient(var(--line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--line) 1px, transparent 1px);
+  background-size: 42px 42px;
+  opacity: 0.22;
+  transform: perspective(700px) rotateX(68deg) translateY(34%);
+  transform-origin: center bottom;
+  animation: gridShift 16s linear infinite;
+}
+
+.ambient-glow {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(56px);
+  pointer-events: none;
+}
+
+.ambient-glow-left {
+  width: 280px;
+  height: 280px;
+  left: -70px;
+  top: 18%;
+  background: rgba(34, 211, 238, 0.16);
+  animation: glowFloat 8s ease-in-out infinite;
+}
+
+.ambient-glow-right {
+  width: 340px;
+  height: 340px;
+  right: -90px;
+  bottom: 14%;
+  background: rgba(14, 165, 233, 0.2);
+  animation: glowFloat 9s ease-in-out infinite reverse;
+}
+
+.lock-content {
+  position: relative;
+  width: min(92vw, 640px);
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(1.5rem, 3vw, 2.6rem);
+  text-align: center;
+  padding: clamp(1.2rem, 3vw, 2.4rem);
+  border-radius: 24px;
+  border: 1px solid rgba(148, 163, 184, 0.34);
+  background: linear-gradient(155deg, rgba(10, 15, 26, 0.82) 0%, rgba(9, 16, 30, 0.62) 100%);
+  backdrop-filter: blur(18px) saturate(140%);
+  box-shadow:
+    0 30px 90px rgba(2, 6, 23, 0.68),
+    inset 0 1px 0 rgba(148, 163, 184, 0.24);
+  animation: cardPulse 7s ease-in-out infinite;
+}
+
+.lock-content::before {
+  content: "";
+  position: absolute;
+  left: 1.2rem;
+  right: 1.2rem;
+  top: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(34, 211, 238, 0.84), transparent);
+  animation: borderFlow 3.8s linear infinite;
+}
+
+.lock-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-family: "JetBrains Mono", "Cascadia Code", "Fira Code", "Consolas", monospace;
+  font-size: 0.79rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.brand-tag {
+  padding: 0.3rem 0.65rem;
+  border-radius: 999px;
+  border: 1px solid rgba(34, 211, 238, 0.42);
+  background: rgba(34, 211, 238, 0.12);
+  color: rgba(103, 232, 249, 0.95);
+}
+
+.brand-divider {
+  color: rgba(148, 163, 184, 0.75);
+}
+
+.brand-state {
+  color: var(--text-muted);
+}
+
+.time-section {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.time-caption {
+  margin: 0;
+  font-family: "JetBrains Mono", "Cascadia Code", "Fira Code", "Consolas", monospace;
+  font-size: 0.78rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(125, 211, 252, 0.82);
+}
+
+.current-time {
+  margin: 0;
+  line-height: 1;
+  font-size: clamp(2.5rem, 10vw, 5.3rem);
+  font-weight: 600;
+  letter-spacing: -0.04em;
+  font-family: "JetBrains Mono", "Cascadia Code", "Fira Code", "Consolas", monospace;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-main);
+  text-shadow:
+    0 0 24px rgba(56, 189, 248, 0.24),
+    0 12px 36px rgba(2, 6, 23, 0.72);
+  animation: textGlow 4s ease-in-out infinite;
+}
+
+.current-date {
+  margin: 0;
+  font-size: clamp(0.96rem, 2.7vw, 1.2rem);
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+}
+
+.unlock-section {
+  width: min(100%, 370px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.security-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-family: "JetBrains Mono", "Cascadia Code", "Fira Code", "Consolas", monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(148, 163, 184, 0.88);
+}
+
+.meta-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #2dd4bf;
+  box-shadow: 0 0 12px rgba(45, 212, 191, 0.8);
+}
+
+.unlock-btn {
+  width: 100%;
+  border: 1px solid rgba(34, 211, 238, 0.45);
+  border-radius: 14px;
+  padding: 0.95rem 1.2rem;
+  color: var(--text-main);
+  background: linear-gradient(120deg, rgba(15, 23, 42, 0.9) 0%, rgba(8, 47, 73, 0.78) 100%);
+  box-shadow:
+    0 14px 34px rgba(2, 6, 23, 0.55),
+    inset 0 1px 0 rgba(148, 163, 184, 0.28);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  font-family: "JetBrains Mono", "Cascadia Code", "Fira Code", "Consolas", monospace;
+  font-size: 0.98rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  transition:
+    transform 0.25s ease,
+    box-shadow 0.25s ease,
+    border-color 0.25s ease;
+}
+
+.unlock-btn:hover {
+  border-color: rgba(103, 232, 249, 0.9);
+  box-shadow:
+    0 18px 44px rgba(2, 6, 23, 0.62),
+    0 0 24px rgba(34, 211, 238, 0.2);
+}
+
+.btn-icon {
+  color: rgba(125, 211, 252, 0.9);
+}
+
+.password-input-container {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.95rem;
+}
+
+.attempt-info {
+  margin: 0;
+  font-family: "JetBrains Mono", "Cascadia Code", "Fira Code", "Consolas", monospace;
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.password-input-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.input-prefix {
+  position: absolute;
+  left: 0.95rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: "JetBrains Mono", "Cascadia Code", "Fira Code", "Consolas", monospace;
+  font-size: 0.73rem;
+  letter-spacing: 0.03em;
+  color: rgba(103, 232, 249, 0.86);
+  pointer-events: none;
+}
+
+.password-input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid rgba(148, 163, 184, 0.38);
+  border-radius: 13px;
+  background: rgba(7, 12, 21, 0.86);
+  color: var(--text-main);
+  padding: 0.95rem 0.95rem 0.95rem 8.45rem;
+  font-size: 1rem;
+  font-family: "JetBrains Mono", "Cascadia Code", "Fira Code", "Consolas", monospace;
+  letter-spacing: 0.03em;
+  outline: none;
+  transition:
+    border-color 0.25s ease,
+    box-shadow 0.25s ease,
+    transform 0.25s ease;
+}
+
+.password-input::placeholder {
+  color: rgba(148, 163, 184, 0.6);
+}
+
+.password-input:focus {
+  border-color: rgba(103, 232, 249, 0.95);
+  box-shadow:
+    0 0 0 3px rgba(34, 211, 238, 0.14),
+    0 12px 30px rgba(2, 6, 23, 0.5);
+  transform: translateY(-1px);
+}
+
+.password-input.error {
+  border-color: rgba(251, 113, 133, 0.95);
+  box-shadow: 0 0 0 3px rgba(251, 113, 133, 0.16);
+  animation: shake 0.36s ease;
+}
+
+.password-error {
+  position: absolute;
+  top: calc(100% + 0.45rem);
+  left: 0;
+  right: 0;
+  font-size: 0.83rem;
+  color: #fecdd3;
+  text-align: center;
+  background: rgba(159, 18, 57, 0.45);
+  border: 1px solid rgba(251, 113, 133, 0.5);
+  border-radius: 10px;
+  padding: 0.38rem 0.55rem;
+  backdrop-filter: blur(5px);
+}
+
+.confirm-btn {
+  margin-top: 0.85rem;
+  background: linear-gradient(120deg, rgba(14, 165, 233, 0.9) 0%, rgba(6, 182, 212, 0.82) 100%);
+  color: #052028;
+}
+
+.lockout-container {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.72rem;
+}
+
+.lockout-message {
+  font-family: "JetBrains Mono", "Cascadia Code", "Fira Code", "Consolas", monospace;
+  font-size: 1.08rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #fda4af;
+}
+
+.lockout-timer {
+  padding: 0.62rem 1rem;
+  border-radius: 999px;
+  border: 1px solid rgba(251, 113, 133, 0.5);
+  background: rgba(159, 18, 57, 0.26);
+  color: #ffe4e6;
+  font-size: 0.92rem;
+}
+
+.unlock-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 10000;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle at center, rgba(14, 165, 233, 0.22) 0%, rgba(2, 6, 23, 0.92) 70%);
+}
+
+.unlock-animation {
+  padding: 0.9rem 1.2rem;
+  border-radius: 12px;
+  border: 1px solid rgba(34, 211, 238, 0.5);
+  background: rgba(6, 182, 212, 0.14);
+  font-family: "JetBrains Mono", "Cascadia Code", "Fira Code", "Consolas", monospace;
+  letter-spacing: 0.18em;
+  font-weight: 600;
+  color: rgba(165, 243, 252, 0.98);
+}
+
+@keyframes gridShift {
+  from {
+    transform: perspective(700px) rotateX(68deg) translateY(34%) translateX(0);
+  }
+  to {
+    transform: perspective(700px) rotateX(68deg) translateY(34%) translateX(42px);
+  }
+}
+
+@keyframes glowFloat {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-20px) scale(1.04);
+  }
+}
+
+@keyframes cardPulse {
+  0%,
+  100% {
+    box-shadow:
+      0 30px 90px rgba(2, 6, 23, 0.68),
+      inset 0 1px 0 rgba(148, 163, 184, 0.24);
+  }
+  50% {
+    box-shadow:
+      0 36px 100px rgba(2, 6, 23, 0.75),
+      0 0 28px rgba(34, 211, 238, 0.14),
+      inset 0 1px 0 rgba(148, 163, 184, 0.24);
+  }
+}
+
+@keyframes borderFlow {
+  0% {
+    transform: translateX(-6%);
+    opacity: 0.1;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(6%);
+    opacity: 0.1;
+  }
+}
+
+@keyframes textGlow {
+  0%,
+  100% {
+    text-shadow:
+      0 0 24px rgba(56, 189, 248, 0.24),
+      0 12px 36px rgba(2, 6, 23, 0.72);
+  }
+  50% {
+    text-shadow:
+      0 0 34px rgba(34, 211, 238, 0.34),
+      0 16px 42px rgba(2, 6, 23, 0.8);
+  }
+}
+
+@keyframes shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-4px);
+  }
+  75% {
+    transform: translateX(4px);
+  }
+}
+
+@media (max-width: 900px) {
+  .lock-content {
+    width: min(95vw, 620px);
+  }
+
+  .password-input {
+    padding-left: 8.15rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .lock-content {
+    border-radius: 20px;
+    padding: 1.1rem;
+    gap: 1.5rem;
+  }
+
+  .lock-brand {
+    font-size: 0.69rem;
+    letter-spacing: 0.1em;
+  }
+
+  .current-time {
+    font-size: clamp(2.25rem, 16vw, 3.5rem);
+  }
+
+  .current-date {
+    font-size: 0.92rem;
+  }
+
+  .unlock-section {
+    width: 100%;
+  }
+
+  .unlock-btn {
+    font-size: 0.92rem;
+    letter-spacing: 0.05em;
+  }
+
+  .input-prefix {
+    font-size: 0.68rem;
+  }
+
+  .password-input {
+    font-size: 0.92rem;
+    padding-left: 7.7rem;
+  }
+}
+
+@media (max-width: 420px) {
+  .lock-screen {
+    padding: 0.55rem;
+  }
+
+  .lock-content {
+    border-radius: 16px;
+    padding: 0.95rem;
+  }
+
+  .lock-brand {
+    flex-wrap: wrap;
+    justify-content: center;
+    row-gap: 0.25rem;
+  }
+
+  .unlock-btn {
+    padding: 0.84rem 1rem;
+  }
+
+  .password-input {
+    padding-left: 7.2rem;
+  }
+
+  .attempt-info,
+  .security-meta {
+    font-size: 0.7rem;
+  }
+}
