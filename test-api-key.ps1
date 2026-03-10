@@ -1,15 +1,18 @@
-# 测试 API Key 是否有效
+# 测试后端网关连通性（不在前端或脚本中保存上游 API Key）
 
-$apiKey = "sk-wOAmGmUMNFVsosjkCm68Fg2wJE7ctTPZMx8q3EozUiT49zFi"
-$baseUrl = "https://tbnx.plus7.plus/v1/chat/completions"
+$backendBaseUrl = "http://localhost:3001"
+$internalToken = $env:INTERNAL_API_TOKEN
 
 $headers = @{
-    'Authorization' = "Bearer $apiKey"
     'Content-Type' = 'application/json'
 }
 
+if ($internalToken) {
+    $headers['x-internal-token'] = $internalToken
+}
+
 $body = @{
-    model = "deepseek-chat"
+    model = "free:Qwen3-30B-A3B"
     messages = @(
         @{
             role = "user"
@@ -19,27 +22,28 @@ $body = @{
     stream = $false
 } | ConvertTo-Json
 
-Write-Host "测试 API Key..." -ForegroundColor Cyan
-Write-Host "URL: $baseUrl" -ForegroundColor Yellow
-Write-Host "Authorization: Bearer $($apiKey.Substring(0, 10))..." -ForegroundColor Yellow
+Write-Host "测试后端网关..." -ForegroundColor Cyan
+Write-Host "Health URL: $backendBaseUrl/health" -ForegroundColor Yellow
+Write-Host "Chat URL: $backendBaseUrl/api/chat" -ForegroundColor Yellow
 Write-Host ""
 
 try {
-    $response = Invoke-WebRequest -Uri $baseUrl -Method POST -Headers $headers -Body $body -ErrorAction Stop
-    Write-Host "✅ 成功！API Key 有效" -ForegroundColor Green
-    Write-Host "响应状态: $($response.StatusCode)" -ForegroundColor Green
-    $response.Content | ConvertFrom-Json | ConvertTo-Json -Depth 5
+    $health = Invoke-WebRequest -Uri "$backendBaseUrl/health" -Method GET -Headers $headers -ErrorAction Stop
+    Write-Host "✅ 健康检查通过: $($health.StatusCode)" -ForegroundColor Green
+
+    $response = Invoke-WebRequest -Uri "$backendBaseUrl/api/chat" -Method POST -Headers $headers -Body $body -ErrorAction Stop
+    Write-Host "✅ Chat 网关调用成功: $($response.StatusCode)" -ForegroundColor Green
+    $response.Content | ConvertFrom-Json | ConvertTo-Json -Depth 10
 } catch {
-    Write-Host "❌ 失败！API Key 无效或其他错误" -ForegroundColor Red
+    Write-Host "❌ 调用失败" -ForegroundColor Red
     Write-Host "错误: $($_.Exception.Message)" -ForegroundColor Red
-    
+
     if ($_.Exception.Response) {
         $statusCode = $_.Exception.Response.StatusCode.value__
         Write-Host "HTTP 状态码: $statusCode" -ForegroundColor Red
-        
+
         $reader = New-Object System.IO.StreamReader($_.Exception.Response.GetResponseStream())
         $responseBody = $reader.ReadToEnd()
         Write-Host "响应内容: $responseBody" -ForegroundColor Red
     }
 }
-

@@ -58,7 +58,5 @@ export interface QualityCheckResult {
  */
 export interface RemoteApiConfig {
     baseURL: string;
-    apiKey: string;
     model: string;
 }
-

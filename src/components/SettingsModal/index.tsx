@@ -97,16 +97,6 @@ const SettingsModal = memo(function SettingsModal({
     [remoteApiConfig, onRemoteApiConfigChange]
   );
 
-  const handleApiKeyChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      onRemoteApiConfigChange({
-        ...remoteApiConfig,
-        apiKey: e.target.value,
-      });
-    },
-    [remoteApiConfig, onRemoteApiConfigChange]
-  );
-
   const handleRemoteModelSelectChange = useCallback(
     (e: React.ChangeEvent<HTMLSelectElement>) => {
       onRemoteApiConfigChange({
@@ -180,21 +170,12 @@ const SettingsModal = memo(function SettingsModal({
           ) : (
             <>
               <div className="field">
-                <label>API地址</label>
+                <label>后端网关地址</label>
                 <input
-                  type="password"
+                  type="text"
                   value={remoteApiConfig.baseURL}
                   onChange={handleBaseURLChange}
-                  placeholder="https://api.openai.com"
-                />
-              </div>
-              <div className="field">
-                <label>API密钥</label>
-                <input
-                  type="password"
-                  value={remoteApiConfig.apiKey}
-                  onChange={handleApiKeyChange}
-                  placeholder="sk-..."
+                  placeholder="http://localhost:3001"
                 />
               </div>
               <div className="field">
@@ -230,6 +211,8 @@ const SettingsModal = memo(function SettingsModal({
                     lineHeight: "1.5",
                   }}
                 >
+                  后端将自动代理到上游模型服务，密钥仅保存在服务端。
+                  <br />
                   💡 <strong>Chat</strong>：快速响应，适合日常对话
                   <br />
                   🧠 <strong>Reasoner</strong>

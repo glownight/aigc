@@ -5,8 +5,14 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:frontend": "vite",
+    "dev:backend": "npm --prefix backend run dev",
     "build": "tsc -b && vite build",
+    "build:frontend": "tsc -b && vite build",
+    "build:backend": "npm --prefix backend run build",
+    "build:all": "npm run build:frontend && npm run build:backend",
     "preview": "vite preview --port 5180",
+    "start:backend": "npm --prefix backend run start",
     "setup:env": "node setup-env.js"
   },
   "dependencies": {

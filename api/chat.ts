@@ -1,4 +1,5 @@
-// Vercel Serverless Function: /api/chat
+// Legacy Vercel Serverless Function: /api/chat
+// 企业级前后端分离版本请使用 backend/ 独立 Node 服务（见 README.md）
 // 将来自前端的 messages 代理到算力平台（suanli.cn）的 Chat Completions API
 // 注意：不要在前端暴露密钥，请在 Vercel 项目环境变量中设置 SUANLI_API_KEY
 

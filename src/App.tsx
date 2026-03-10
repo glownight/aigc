@@ -137,9 +137,27 @@ function App() {
   // 🔧 强制更新 API 配置：如果环境变量有配置，覆盖 sessionStorage
   useEffect(() => {
     const envConfig = getRemoteApiConfig();
-    if (envConfig.apiKey && envConfig.apiKey !== remoteApiConfig.apiKey) {
-      console.log("[App] 🔄 检测到环境变量配置，更新 API 配置");
-      setRemoteApiConfig(envConfig);
+    const hasLegacyApiKey = Object.prototype.hasOwnProperty.call(
+      remoteApiConfig as unknown as Record<string, unknown>,
+      "apiKey",
+    );
+    const shouldMigrateLegacyRemoteModel =
+      remoteApiConfig.model === "free:Qwen3-30B-A3B" &&
+      envConfig.model !== remoteApiConfig.model;
+    const normalizedConfig: RemoteApiConfig = {
+      baseURL: remoteApiConfig.baseURL || envConfig.baseURL,
+      model: shouldMigrateLegacyRemoteModel
+        ? envConfig.model
+        : remoteApiConfig.model || envConfig.model,
+    };
+
+    if (
+      hasLegacyApiKey ||
+      normalizedConfig.baseURL !== remoteApiConfig.baseURL ||
+      normalizedConfig.model !== remoteApiConfig.model
+    ) {
+      console.log("[App] 🔄 标准化远程配置并移除旧字段");
+      setRemoteApiConfig(normalizedConfig);
     }
   }, []); // 只在组件挂载时执行一次
 
