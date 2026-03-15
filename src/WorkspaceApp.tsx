@@ -56,6 +56,7 @@ function WorkspaceApp({ onLock }: WorkspaceAppProps) {
 
     sessionStorage.removeItem("aigc.engine");
     sessionStorage.removeItem("aigc.browserModel");
+    sessionStorage.removeItem("aigc.remoteApiConfig");
   }, []);
 
   const [input, setInput] = useState("");
@@ -75,24 +76,36 @@ function WorkspaceApp({ onLock }: WorkspaceAppProps) {
   );
 
   const [theme] = useSessionStorage<Theme>("aigc.theme", "black");
-  const [remoteApiConfig, setRemoteApiConfig] =
-    useSessionStorage<RemoteApiConfig>(
-      "aigc.remoteApiConfig",
-      getRemoteApiConfig(),
-    );
+  const [remoteApiConfig, setRemoteApiConfig] = useState<RemoteApiConfig>(
+    () => getRemoteApiConfig(),
+  );
+  const [runtimeApiKey, setRuntimeApiKey] = useState("");
 
   useEffect(() => {
     const envConfig = getRemoteApiConfig();
     const shouldSyncFromEnv =
       envConfig.baseURL !== remoteApiConfig.baseURL ||
-      envConfig.apiKey !== remoteApiConfig.apiKey ||
-      envConfig.model !== remoteApiConfig.model;
+      envConfig.model !== remoteApiConfig.model ||
+      envConfig.providerName !== remoteApiConfig.providerName ||
+      envConfig.upstreamBaseURL !== remoteApiConfig.upstreamBaseURL;
 
     if (shouldSyncFromEnv) {
-      console.log("[App] 检测到环境变量配置变更，更新 API 配置");
       setRemoteApiConfig(envConfig);
     }
-  }, [remoteApiConfig.apiKey, remoteApiConfig.baseURL, remoteApiConfig.model, setRemoteApiConfig]);
+  }, [
+    remoteApiConfig.baseURL,
+    remoteApiConfig.model,
+    remoteApiConfig.providerName,
+    remoteApiConfig.upstreamBaseURL,
+  ]);
+
+  const activeRemoteApiConfig = useMemo(
+    () => ({
+      ...remoteApiConfig,
+      apiKey: runtimeApiKey.trim(),
+    }),
+    [remoteApiConfig, runtimeApiKey],
+  );
 
   const {
     currentSession,
@@ -122,7 +135,7 @@ function WorkspaceApp({ onLock }: WorkspaceAppProps) {
   const sessionMessages = currentSession?.messages || defaultMessages;
 
   const remoteChat = useRemoteChat(
-    remoteApiConfig,
+    activeRemoteApiConfig,
     sessionMessages,
     updateCurrentSession,
   );
@@ -166,7 +179,9 @@ function WorkspaceApp({ onLock }: WorkspaceAppProps) {
   }, []);
 
   const selectAllSessions = useCallback(() => {
-    setSelectedSessions(new Set(sessionManager.sessions.map((session) => session.id)));
+    setSelectedSessions(
+      new Set(sessionManager.sessions.map((session) => session.id)),
+    );
   }, [sessionManager.sessions]);
 
   const deselectAllSessions = useCallback(() => {
@@ -251,7 +266,7 @@ function WorkspaceApp({ onLock }: WorkspaceAppProps) {
   return (
     <div className={`app theme-${theme}`}>
       <ChatHeader
-        remoteModel={remoteApiConfig.model}
+        remoteModel={activeRemoteApiConfig.model}
         onToggleSidebar={() => setShowSidebar(!showSidebar)}
         onShowSettings={() => setShowSettings(true)}
         onNewSession={() => createNewSession(() => setShowSidebar(false))}
@@ -266,7 +281,9 @@ function WorkspaceApp({ onLock }: WorkspaceAppProps) {
           selectedSessions={selectedSessions}
           onClose={() => setShowSidebar(false)}
           onCreateNew={() => createNewSession(() => setShowSidebar(false))}
-          onSwitchSession={(id) => switchSession(id, () => setShowSidebar(false))}
+          onSwitchSession={(id) =>
+            switchSession(id, () => setShowSidebar(false))
+          }
           onDeleteSession={deleteSession}
           onToggleBatchMode={toggleBatchDeleteMode}
           onToggleSelection={toggleSessionSelection}
@@ -277,7 +294,8 @@ function WorkspaceApp({ onLock }: WorkspaceAppProps) {
       )}
 
       <main className="chat">
-        {sessionMessages.filter((message: Message) => message.role === "user").length === 0 && (
+        {sessionMessages.filter((message: Message) => message.role === "user")
+          .length === 0 && (
           <SuggestionCards
             suggestions={suggestions}
             onSelect={(suggestion) => handleSend(suggestion)}
@@ -302,9 +320,10 @@ function WorkspaceApp({ onLock }: WorkspaceAppProps) {
 
       {showSettings && (
         <SettingsModal
-          remoteApiConfig={remoteApiConfig}
+          remoteModel={activeRemoteApiConfig.model}
+          apiKey={runtimeApiKey}
           onClose={() => setShowSettings(false)}
-          onRemoteApiConfigChange={setRemoteApiConfig}
+          onApiKeyChange={setRuntimeApiKey}
         />
       )}
     </div>

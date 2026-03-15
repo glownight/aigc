@@ -128,10 +128,6 @@ export function useRemoteChat(
       return;
     }
 
-    if (import.meta.env.DEV) {
-      console.log("[useRemoteChat] start request:", apiConfig.model);
-    }
-
     const userMsg: Message = { id: uid(), role: "user", content: text.trim() };
     const assistantId = uid();
     const newMessages = [...sessionMessages, userMsg];
@@ -242,10 +238,6 @@ export function useRemoteChat(
                 continue;
               }
 
-              if (!hasStartedStreaming && import.meta.env.DEV) {
-                console.log("[useRemoteChat] start streaming response");
-              }
-
               if (!hasStartedStreaming) {
                 assistantMessage.content = delta;
                 hasStartedStreaming = true;
@@ -292,9 +284,6 @@ export function useRemoteChat(
 
         if (done) {
           flushPendingContent();
-          if (import.meta.env.DEV) {
-            console.log("[useRemoteChat] response completed:", assistantMessage.content.length);
-          }
           break;
         }
       }
@@ -340,7 +329,6 @@ export function useRemoteChat(
 
     const cleanedMessages = stripEmptyAssistantMessages(activeRequest.latestMessages);
     if (cleanedMessages !== activeRequest.latestMessages) {
-      console.log("[useRemoteChat] cleaned empty assistant message");
       activeRequest.syncMessages(cleanedMessages);
     }
   }

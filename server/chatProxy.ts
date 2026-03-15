@@ -108,7 +108,6 @@ export async function createUpstreamChatRequest(
     env.CODEX_FOR_ME_API_KEY,
     env.UPSTREAM_API_KEY,
     env.SUANLI_API_KEY,
-    env.VITE_REMOTE_API_KEY,
     getBearerToken(headers),
   );
 
@@ -187,10 +186,11 @@ export async function writeProxyResultToNodeResponse(
   res: NodeLikeResponse,
   result: ProxyResult,
 ): Promise<void> {
-  if (!result.ok) {
-    res.statusCode = result.status;
+  if (result.ok === false) {
+    const failure = result;
+    res.statusCode = failure.status;
     res.setHeader("Content-Type", "application/json; charset=utf-8");
-    res.end(JSON.stringify(result.body));
+    res.end(JSON.stringify(failure.body));
     return;
   }
 

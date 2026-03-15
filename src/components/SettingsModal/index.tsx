@@ -3,19 +3,20 @@
  */
 
 import { memo, useCallback } from "react";
-import type { RemoteApiConfig } from "../../types";
 import "./styles.css";
 
 interface SettingsModalProps {
-  remoteApiConfig: RemoteApiConfig;
+  remoteModel: string;
+  apiKey: string;
   onClose: () => void;
-  onRemoteApiConfigChange: (config: RemoteApiConfig) => void;
+  onApiKeyChange: (apiKey: string) => void;
 }
 
 const SettingsModal = memo(function SettingsModal({
-  remoteApiConfig,
+  remoteModel,
+  apiKey,
   onClose,
-  onRemoteApiConfigChange,
+  onApiKeyChange,
 }: SettingsModalProps) {
   const handleBackdropClick = useCallback(
     (e: React.MouseEvent) => {
@@ -28,12 +29,9 @@ const SettingsModal = memo(function SettingsModal({
 
   const handleApiKeyChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      onRemoteApiConfigChange({
-        ...remoteApiConfig,
-        apiKey: e.target.value,
-      });
+      onApiKeyChange(e.target.value);
     },
-    [remoteApiConfig, onRemoteApiConfigChange],
+    [onApiKeyChange],
   );
 
   return (
@@ -54,14 +52,14 @@ const SettingsModal = memo(function SettingsModal({
 
           <div className="field">
             <label>模型名称</label>
-            <input type="text" value={remoteApiConfig.model} disabled />
+            <input type="text" value={remoteModel} disabled />
           </div>
 
           <div className="field">
             <label>API Key</label>
             <input
               type="password"
-              value={remoteApiConfig.apiKey}
+              value={apiKey}
               onChange={handleApiKeyChange}
               placeholder="clp-..."
             />
@@ -77,7 +75,7 @@ const SettingsModal = memo(function SettingsModal({
               只需要提供一个 key。
               <br />
               推荐把 key 写到项目根目录 <code>.env.local</code> 的{" "}
-              <code>OPENAI_API_KEY</code>，这里留空也能用。
+              <code>OPENAI_API_KEY</code>，这里输入的 key 只会存在当前页面内存中。
             </small>
           </div>
         </div>

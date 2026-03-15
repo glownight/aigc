@@ -2,7 +2,7 @@ import type { IncomingHttpHeaders, IncomingMessage, ServerResponse } from "node:
 import {
   createUpstreamChatRequest,
   writeProxyResultToNodeResponse,
-} from "../server/chatProxy";
+} from "../server/chatProxy.js";
 
 type ApiRequest = IncomingMessage & {
   body?: unknown;
