@@ -14,6 +14,18 @@ type StreamEventPayload = {
   choices?: Array<{ delta?: { content?: string } }>;
 };
 
+type ErrorResponsePayload = {
+  error?: string;
+  message?: string;
+  diagnostics?: {
+    hasOpenAIApiKey?: boolean;
+    hasCodexForMeApiKey?: boolean;
+    hasUpstreamApiKey?: boolean;
+    hasSuanliApiKey?: boolean;
+    hasBearerToken?: boolean;
+  };
+};
+
 type ActiveRequestState = {
   controller: AbortController;
   latestMessages: Message[];
@@ -57,6 +69,16 @@ function normalizeRemoteChatEndpoint(rawBaseURL: string): string {
   }
 }
 
+function formatDiagnostics(diagnostics: NonNullable<ErrorResponsePayload["diagnostics"]>): string {
+  return [
+    `OPENAI_API_KEY=${diagnostics.hasOpenAIApiKey ? "yes" : "no"}`,
+    `CODEX_FOR_ME_API_KEY=${diagnostics.hasCodexForMeApiKey ? "yes" : "no"}`,
+    `UPSTREAM_API_KEY=${diagnostics.hasUpstreamApiKey ? "yes" : "no"}`,
+    `SUANLI_API_KEY=${diagnostics.hasSuanliApiKey ? "yes" : "no"}`,
+    `Authorization=${diagnostics.hasBearerToken ? "yes" : "no"}`,
+  ].join(", ");
+}
+
 function extractErrorMessage(errorText: string): string {
   const trimmed = errorText.trim();
   if (!trimmed) {
@@ -64,7 +86,12 @@ function extractErrorMessage(errorText: string): string {
   }
 
   try {
-    const parsed = JSON.parse(trimmed) as { error?: string; message?: string };
+    const parsed = JSON.parse(trimmed) as ErrorResponsePayload;
+
+    if (parsed.error && parsed.diagnostics) {
+      return `${parsed.error} (${formatDiagnostics(parsed.diagnostics)})`;
+    }
+
     return parsed.error || parsed.message || trimmed;
   } catch {
     return trimmed;
@@ -75,11 +102,11 @@ function formatRequestError(error: unknown): string {
   const rawMessage = error instanceof Error ? error.message : String(error);
 
   if (/Failed to fetch/i.test(rawMessage)) {
-    return "无法连接到 /api/chat。请确认开发服务器已重启，并在 .env.local 中设置 OPENAI_API_KEY，或在设置里填入 clp key。";
+    return "无法连接到 /api/chat。请确认开发服务器已重启，或检查线上部署是否可访问。";
   }
 
   if (/Missing API key/i.test(rawMessage)) {
-    return "未检测到可用的 API Key。请在 .env.local 中设置 OPENAI_API_KEY，或在设置里填入 clp key。";
+    return "未检测到可用的 API Key。Vercel 部署请打开 /api/env-check，确认 hasOpenAIApiKey 在 Production 中为 true；或者在设置里手动填入 clp key。";
   }
 
   return rawMessage;

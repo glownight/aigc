@@ -14,7 +14,7 @@ type RemoteMessage = {
 type ProxyFailure = {
   ok: false;
   status: number;
-  body: { error: string };
+  body: { error: string; diagnostics?: ChatProxyDiagnostics };
 };
 
 type ProxySuccess = {
@@ -24,7 +24,14 @@ type ProxySuccess = {
 };
 
 type ProxyResult = ProxyFailure | ProxySuccess;
-type ChatProxyEnv = Record<string, string | undefined>;
+export type ChatProxyEnv = Record<string, string | undefined>;
+export type ChatProxyDiagnostics = {
+  hasOpenAIApiKey: boolean;
+  hasCodexForMeApiKey: boolean;
+  hasUpstreamApiKey: boolean;
+  hasSuanliApiKey: boolean;
+  hasBearerToken: boolean;
+};
 
 type NodeLikeResponse = {
   statusCode: number;
@@ -54,6 +61,40 @@ function getBearerToken(headers: HeaderBag): string {
   const authorization = getHeaderValue(headers, "authorization");
   const match = authorization.match(/^Bearer\s+(.+)$/i);
   return match?.[1]?.trim() || "";
+}
+
+export function getChatProxyRuntimeEnv(source: ChatProxyEnv = process.env): ChatProxyEnv {
+  return {
+    OPENAI_API_KEY: source.OPENAI_API_KEY,
+    CODEX_FOR_ME_API_KEY: source.CODEX_FOR_ME_API_KEY,
+    UPSTREAM_API_KEY: source.UPSTREAM_API_KEY,
+    SUANLI_API_KEY: source.SUANLI_API_KEY,
+    OPENAI_API_BASE_URL: source.OPENAI_API_BASE_URL,
+    CODEX_FOR_ME_BASE_URL: source.CODEX_FOR_ME_BASE_URL,
+    UPSTREAM_URL: source.UPSTREAM_URL,
+    OPENAI_DEFAULT_MODEL: source.OPENAI_DEFAULT_MODEL,
+    CODEX_DEFAULT_MODEL: source.CODEX_DEFAULT_MODEL,
+    UPSTREAM_MODEL: source.UPSTREAM_MODEL,
+    VERCEL_ENV: source.VERCEL_ENV,
+    VERCEL_REGION: source.VERCEL_REGION,
+    VERCEL_URL: source.VERCEL_URL,
+    NODE_ENV: source.NODE_ENV,
+  };
+}
+
+export function getChatProxyDiagnostics(
+  env: ChatProxyEnv,
+  headers: HeaderBag,
+): ChatProxyDiagnostics {
+  const bearerToken = getBearerToken(headers);
+
+  return {
+    hasOpenAIApiKey: Boolean(env.OPENAI_API_KEY?.trim()),
+    hasCodexForMeApiKey: Boolean(env.CODEX_FOR_ME_API_KEY?.trim()),
+    hasUpstreamApiKey: Boolean(env.UPSTREAM_API_KEY?.trim()),
+    hasSuanliApiKey: Boolean(env.SUANLI_API_KEY?.trim()),
+    hasBearerToken: Boolean(bearerToken),
+  };
 }
 
 function normalizeUpstreamUrl(rawValue: string): string {
@@ -105,6 +146,7 @@ export async function createUpstreamChatRequest(
   env: ChatProxyEnv,
 ): Promise<ProxyResult> {
   const bearerToken = getBearerToken(headers);
+  const diagnostics = getChatProxyDiagnostics(env, headers);
   const apiKey = pickFirstValue(
     env.OPENAI_API_KEY,
     env.CODEX_FOR_ME_API_KEY,
@@ -114,13 +156,7 @@ export async function createUpstreamChatRequest(
   );
 
   if (!apiKey) {
-    console.error("[chatProxy] missing API key at runtime", {
-      hasOpenAIApiKey: Boolean(env.OPENAI_API_KEY?.trim()),
-      hasCodexForMeApiKey: Boolean(env.CODEX_FOR_ME_API_KEY?.trim()),
-      hasUpstreamApiKey: Boolean(env.UPSTREAM_API_KEY?.trim()),
-      hasSuanliApiKey: Boolean(env.SUANLI_API_KEY?.trim()),
-      hasBearerToken: Boolean(bearerToken),
-    });
+    console.error("[chatProxy] missing API key at runtime", diagnostics);
 
     return {
       ok: false,
@@ -128,6 +164,7 @@ export async function createUpstreamChatRequest(
       body: {
         error:
           "Missing API key. Set OPENAI_API_KEY in server env (.env.local / Vercel Project Settings) or enter a key in Settings.",
+        diagnostics,
       },
     };
   }
