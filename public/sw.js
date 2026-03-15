@@ -1,5 +1,5 @@
 // 高级 Service Worker - 智能缓存策略
-const VERSION = "1.3.1";
+const VERSION = "1.3.2";
 const CACHE_NAME = `aigc-v${VERSION}`;
 const STATIC_CACHE = `aigc-static-v${VERSION}`;
 const DYNAMIC_CACHE = `aigc-dynamic-v${VERSION}`;
@@ -22,7 +22,6 @@ const CRITICAL_RESOURCES = ["/", "/index.html"];
 
 // 大型资源模式 - 按需缓存
 const LARGE_RESOURCES = [
-  /webllm.*\.js$/,
   /markdown.*\.js$/,
   /highlight.*\.js$/,
 ];

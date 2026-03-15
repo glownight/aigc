@@ -12,23 +12,18 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const envContent = `# 远程API配置
-# Remote API Configuration
+const envContent = `# codex-for-me server-side proxy configuration
+# 当前项目只需要一个 key
 
-# API基础地址 / API Base URL
-VITE_REMOTE_API_BASE_URL=https://tbnx.plus7.plus/
+OPENAI_API_KEY=clp-your-codex-for-me-key
 
-# API密钥 / API Key
-VITE_REMOTE_API_KEY=sk-wOAmGmUMNFVsosjkCm68Fg2wJE7ctTPZMx8q3EozUiT49zFi
+# Optional overrides
+OPENAI_API_BASE_URL=https://api-vip.codex-for.me/v1
+OPENAI_DEFAULT_MODEL=gpt-5.3-codex
 
-# 默认模型 / Default Model
-# 可选: deepseek-chat, deepseek-r1, deepseek-r1-250528, deepseek-reasoner, 
-#       deepseek-reasoner-all, deepseek-v3, deepseek-v3-250324
-VITE_REMOTE_API_MODEL=deepseek-chat
-
-# 默认引擎模式 / Default Engine Mode
-# 选项: "browser" | "remote"
-VITE_DEFAULT_ENGINE=remote
+# Optional browser-side fallback for temporary local testing
+# Not recommended for shared environments
+# VITE_REMOTE_API_KEY=clp-your-codex-for-me-key
 `;
 
 const envPath = path.join(__dirname, ".env.local");
@@ -47,6 +42,7 @@ try {
   console.log(envContent);
   console.log("🚀 请重启开发服务器：npm run dev");
 } catch (error) {
-  console.error("❌ 创建文件失败：", error.message);
+  const message = error instanceof Error ? error.message : String(error);
+  console.error("❌ 创建文件失败：", message);
   process.exit(1);
 }

@@ -10,7 +10,6 @@
     "setup:env": "node setup-env.js"
   },
   "dependencies": {
-    "@mlc-ai/web-llm": "0.2.74",
     "framer-motion": "^12.23.24",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
@@ -21,6 +20,7 @@
     "three": "^0.183.2"
   },
   "devDependencies": {
+    "@types/node": "^25.5.0",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@types/three": "^0.183.1",

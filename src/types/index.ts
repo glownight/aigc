@@ -10,8 +10,6 @@ export type Message = {
     content: string;
 };
 
-export type EngineMode = "browser" | "remote";
-
 export type Session = {
     id: string;
     title: string;
@@ -28,24 +26,6 @@ export type SessionManager = {
 export type Theme = "blue" | "pink" | "green" | "yellow" | "black";
 
 /**
- * 引擎初始化进度报告
- */
-export interface EngineProgressReport {
-    text?: string;
-    progress?: number;
-}
-
-/**
- * 流式处理配置
- */
-export interface StreamConfig {
-    maxLength: number;
-    duplicateThreshold: number;
-    qualityCheckInterval: number;
-    minChunkLength: number;
-}
-
-/**
  * 内容质量检查结果
  */
 export interface QualityCheckResult {
@@ -60,5 +40,7 @@ export interface RemoteApiConfig {
     baseURL: string;
     apiKey: string;
     model: string;
+    providerName?: string;
+    upstreamBaseURL?: string;
 }
 
