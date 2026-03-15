@@ -1,5 +1,5 @@
 // 高级 Service Worker - 智能缓存策略
-const VERSION = "1.3.0";
+const VERSION = "1.3.1";
 const CACHE_NAME = `aigc-v${VERSION}`;
 const STATIC_CACHE = `aigc-static-v${VERSION}`;
 const DYNAMIC_CACHE = `aigc-dynamic-v${VERSION}`;

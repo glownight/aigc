@@ -14,6 +14,7 @@
 
     <!-- 资源预加载提示 -->
     <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 
     <!-- 首屏关键 CSS 内联 -->
     <style>
@@ -33,8 +34,8 @@
 
       #root {
         min-height: 100vh;
-        background: #0f0f0f;
-        color: #c0c0c0;
+        background: #0a0b0a;
+        color: #e3decb;
         font-family:
           -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
         position: relative;
@@ -47,7 +48,9 @@
         left: 0;
         width: 100%;
         height: 100%;
-        background: linear-gradient(135deg, #0f0f0f 0%, #1a1a1a 100%);
+        background:
+          radial-gradient(circle at top, rgba(54, 61, 50, 0.18), transparent 40%),
+          linear-gradient(180deg, #0a0b0a 0%, #1c1d1a 100%);
         display: flex;
         flex-direction: column;
         justify-content: center;
@@ -66,7 +69,7 @@
         width: 48px;
         height: 48px;
         border: 3px solid rgba(255, 255, 255, 0.1);
-        border-top: 3px solid #6baed6;
+        border-top: 3px solid #e3decb;
         border-radius: 50%;
         animation: spin 1.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
         margin-bottom: 24px;
@@ -83,7 +86,7 @@
 
       .loading-text {
         font-size: 15px;
-        color: rgba(255, 255, 255, 0.7);
+        color: rgba(227, 222, 203, 0.76);
         text-align: center;
         font-weight: 400;
         letter-spacing: 0.5px;
@@ -102,7 +105,7 @@
 
       .loading-progress-bar {
         height: 100%;
-        background: linear-gradient(90deg, #6baed6, #4a9eff);
+        background: linear-gradient(90deg, #7a7d76, #e3decb, #363d32);
         border-radius: 1px;
         animation: progress 2s ease-in-out infinite;
         transform: translateX(-100%);
@@ -191,7 +194,9 @@
 
         // 等待 React 应用渲染完成
         const checkAppReady = () => {
-          const appContent = document.querySelector(".app");
+          const appContent = document.querySelector(
+            "[data-app-ready='true'], .app, .lock-screen",
+          );
           if (appContent) {
             console.log("应用渲染完成，隐藏加载指示器");
             clearInterval(textInterval);
