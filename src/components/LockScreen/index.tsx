@@ -15,6 +15,9 @@ const HOLD_DURATION = 1500;
 const UNLOCK_DELAY = 2000;
 const PROGRESS_SIZE = 80;
 const PROGRESS_RADIUS = 38;
+const ACCESS_PASSWORD = "55";
+const MAX_PASSWORD_ATTEMPTS = 3;
+const LOCKOUT_DURATION_SECONDS = 30;
 const LUNAR_DATE_FORMATTER = new Intl.DateTimeFormat("zh-CN-u-ca-chinese", {
   year: "numeric",
   month: "long",
@@ -301,11 +304,19 @@ const LockScreen = memo<LockScreenProps>(({ onUnlock, onPrepareUnlock }) => {
   const [currentTime, setCurrentTime] = useState(() => new Date());
   const [isPressing, setIsPressing] = useState(false);
   const [isUnlocked, setIsUnlocked] = useState(false);
+  const [showPasswordInput, setShowPasswordInput] = useState(false);
+  const [password, setPassword] = useState("");
+  const [passwordError, setPasswordError] = useState(false);
+  const [attemptCount, setAttemptCount] = useState(0);
+  const [isLockedOut, setIsLockedOut] = useState(false);
+  const [lockoutTime, setLockoutTime] = useState(0);
 
   const webglContainerRef = useRef<HTMLDivElement>(null);
   const progressCanvasRef = useRef<HTMLCanvasElement>(null);
+  const passwordInputRef = useRef<HTMLInputElement>(null);
   const progressFrameRef = useRef<number | null>(null);
   const unlockTimeoutRef = useRef<number | null>(null);
+  const passwordErrorTimeoutRef = useRef<number | null>(null);
   const progressRef = useRef(0);
   const pressStartRef = useRef(0);
   const interactionRef = useRef(0);
@@ -314,7 +325,23 @@ const LockScreen = memo<LockScreenProps>(({ onUnlock, onPrepareUnlock }) => {
 
   const { display, meridian } = formatTime(currentTime);
   const { yearLabel, dateLabel, detailLabel } = formatLunarInfo(currentTime);
-  const statusText = isUnlocked ? "已解锁" : isPressing ? "正在唤醒..." : "长按以苏醒";
+  const remainingAttempts = Math.max(0, MAX_PASSWORD_ATTEMPTS - attemptCount);
+  const statusText = isUnlocked
+    ? "已解锁"
+    : isLockedOut
+      ? `请等待 ${lockoutTime}s`
+      : showPasswordInput
+        ? "输入密钥以继续"
+        : isPressing
+          ? "正在唤醒..."
+          : "长按以苏醒";
+
+  const clearPasswordErrorTimer = () => {
+    if (passwordErrorTimeoutRef.current !== null) {
+      window.clearTimeout(passwordErrorTimeoutRef.current);
+      passwordErrorTimeoutRef.current = null;
+    }
+  };
 
   const drawProgress = () => {
     const canvas = progressCanvasRef.current;
@@ -350,6 +377,23 @@ const LockScreen = memo<LockScreenProps>(({ onUnlock, onPrepareUnlock }) => {
     }
   };
 
+  const openPasswordInput = () => {
+    if (showPasswordInput || isUnlockedRef.current) {
+      return;
+    }
+
+    isPressingRef.current = false;
+    progressRef.current = 0;
+    interactionRef.current = 0.78;
+    stopProgressLoop();
+    drawProgress();
+    clearPasswordErrorTimer();
+    setIsPressing(false);
+    setPassword("");
+    setPasswordError(false);
+    setShowPasswordInput(true);
+  };
+
   const triggerUnlock = () => {
     if (isUnlockedRef.current) {
       return;
@@ -362,7 +406,11 @@ const LockScreen = memo<LockScreenProps>(({ onUnlock, onPrepareUnlock }) => {
     interactionRef.current = 2;
     stopProgressLoop();
     drawProgress();
+    clearPasswordErrorTimer();
     setIsPressing(false);
+    setShowPasswordInput(false);
+    setPassword("");
+    setPasswordError(false);
     setIsUnlocked(true);
 
     sessionStorage.setItem("unlockToken", btoa(`unlocked_${Date.now()}`));
@@ -390,7 +438,7 @@ const LockScreen = memo<LockScreenProps>(({ onUnlock, onPrepareUnlock }) => {
       interactionRef.current = lerp(interactionRef.current, 1, 0.05);
 
       if (progressRef.current >= 1) {
-        triggerUnlock();
+        openPasswordInput();
         return;
       }
     } else {
@@ -419,7 +467,7 @@ const LockScreen = memo<LockScreenProps>(({ onUnlock, onPrepareUnlock }) => {
   };
 
   const beginPress = () => {
-    if (isUnlockedRef.current || isPressingRef.current) {
+    if (isUnlockedRef.current || isPressingRef.current || showPasswordInput) {
       return;
     }
 
@@ -439,6 +487,49 @@ const LockScreen = memo<LockScreenProps>(({ onUnlock, onPrepareUnlock }) => {
     isPressingRef.current = false;
     setIsPressing(false);
     ensureProgressLoop();
+  };
+
+  const handlePasswordChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setPassword(event.target.value.replace(/\D/g, "").slice(0, ACCESS_PASSWORD.length));
+    setPasswordError(false);
+  };
+
+  const handlePasswordSubmit = () => {
+    if (isUnlockedRef.current || !showPasswordInput) {
+      return;
+    }
+
+    if (isLockedOut) {
+      setPasswordError(true);
+      return;
+    }
+
+    if (password === ACCESS_PASSWORD) {
+      triggerUnlock();
+      return;
+    }
+
+    const nextAttemptCount = attemptCount + 1;
+    clearPasswordErrorTimer();
+    setAttemptCount(nextAttemptCount);
+    setPassword("");
+    setPasswordError(true);
+
+    if (nextAttemptCount >= MAX_PASSWORD_ATTEMPTS) {
+      setIsLockedOut(true);
+      setLockoutTime(LOCKOUT_DURATION_SECONDS);
+    }
+
+    passwordErrorTimeoutRef.current = window.setTimeout(() => {
+      setPasswordError(false);
+      passwordErrorTimeoutRef.current = null;
+    }, 1200);
+  };
+
+  const handlePasswordKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Enter") {
+      handlePasswordSubmit();
+    }
   };
 
   useEffect(() => {
@@ -462,6 +553,45 @@ const LockScreen = memo<LockScreenProps>(({ onUnlock, onPrepareUnlock }) => {
     canvas.height = PROGRESS_SIZE;
     drawProgress();
   }, []);
+
+  useEffect(() => {
+    if (showPasswordInput && !isLockedOut) {
+      passwordInputRef.current?.focus();
+      passwordInputRef.current?.select();
+    }
+  }, [isLockedOut, showPasswordInput]);
+
+  useEffect(() => {
+    if (!isLockedOut || lockoutTime <= 0) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      setLockoutTime((current) => current - 1);
+    }, 1000);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [isLockedOut, lockoutTime]);
+
+  useEffect(() => {
+    if (isLockedOut || lockoutTime > 0) {
+      return;
+    }
+
+    setAttemptCount(0);
+    setPassword("");
+    setPasswordError(false);
+  }, [isLockedOut, lockoutTime]);
+
+  useEffect(() => {
+    if (lockoutTime > 0) {
+      return;
+    }
+
+    setIsLockedOut(false);
+  }, [lockoutTime]);
 
   useEffect(() => {
     const handlePointerUp = () => {
@@ -636,6 +766,7 @@ const LockScreen = memo<LockScreenProps>(({ onUnlock, onPrepareUnlock }) => {
   useEffect(() => {
     return () => {
       stopProgressLoop();
+      clearPasswordErrorTimer();
       if (unlockTimeoutRef.current !== null) {
         window.clearTimeout(unlockTimeoutRef.current);
       }
@@ -697,37 +828,106 @@ const LockScreen = memo<LockScreenProps>(({ onUnlock, onPrepareUnlock }) => {
           <div className="sub-quote">生生不息，万物寻路。</div>
         </section>
 
-        <button
-          type="button"
-          className="interaction-zone"
-          aria-label="长按以苏醒"
-          onContextMenu={(event) => event.preventDefault()}
-          onPointerDown={(event) => {
-            if (event.pointerType === "mouse" && event.button !== 0) {
-              return;
-            }
+        {showPasswordInput ? (
+          <section className="password-zone" aria-label="访问密钥输入">
+            <div className="password-panel">
+              <div className="password-meta">
+                <span>ACCESS KEY</span>
+                <span>
+                  {isLockedOut
+                    ? `LOCK ${lockoutTime}s`
+                    : `${remainingAttempts} TRIES LEFT`}
+                </span>
+              </div>
 
-            event.preventDefault();
-            beginPress();
-          }}
-          onPointerLeave={(event) => {
-            if (event.pointerType === "mouse") {
-              releasePress();
-            }
-          }}
-        >
-          <div className="unlock-btn-container">
-            <div className="unlock-ring-bg" />
-            <canvas
-              ref={progressCanvasRef}
-              className="progress-canvas"
-              width={PROGRESS_SIZE}
-              height={PROGRESS_SIZE}
-            />
-            <div className="unlock-core" />
-          </div>
-          <div className="status-text">{statusText}</div>
-        </button>
+              <div
+                className={[
+                  "password-field",
+                  passwordError ? "has-error" : "",
+                  isLockedOut ? "is-disabled" : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
+              >
+                <span className="password-prefix">root //</span>
+                <input
+                  ref={passwordInputRef}
+                  type="password"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={ACCESS_PASSWORD.length}
+                  className="password-input"
+                  value={password}
+                  placeholder="输入访问密钥"
+                  aria-label="输入锁屏密码"
+                  autoComplete="off"
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  spellCheck={false}
+                  disabled={isLockedOut || isUnlocked}
+                  onChange={handlePasswordChange}
+                  onKeyDown={handlePasswordKeyDown}
+                />
+              </div>
+
+              <div
+                className={[
+                  "password-feedback",
+                  passwordError ? "has-error" : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
+              >
+                {isLockedOut
+                  ? `连续输错 ${MAX_PASSWORD_ATTEMPTS} 次，请等待 ${lockoutTime} 秒`
+                  : passwordError
+                    ? `密钥错误，还剩 ${remainingAttempts} 次尝试`
+                    : "输入密钥以完成解锁"}
+              </div>
+
+              <button
+                type="button"
+                className="password-submit"
+                onClick={handlePasswordSubmit}
+                disabled={isLockedOut || password.length === 0}
+              >
+                VERIFY
+              </button>
+            </div>
+          </section>
+        ) : (
+          <button
+            type="button"
+            className="interaction-zone"
+            aria-label="长按以苏醒"
+            onContextMenu={(event) => event.preventDefault()}
+            onPointerDown={(event) => {
+              if (event.pointerType === "mouse" && event.button !== 0) {
+                return;
+              }
+
+              event.preventDefault();
+              beginPress();
+            }}
+            onPointerLeave={(event) => {
+              if (event.pointerType === "mouse") {
+                releasePress();
+              }
+            }}
+          >
+            <div className="unlock-btn-container">
+              <div className="unlock-ring-bg" />
+              <canvas
+                ref={progressCanvasRef}
+                className="progress-canvas"
+                width={PROGRESS_SIZE}
+                height={PROGRESS_SIZE}
+              />
+              <div className="unlock-core" />
+            </div>
+            <div className="status-text">{statusText}</div>
+          </button>
+        )}
 
         <div className="decal-left">LAT. 35.8617° N // LNG. 104.1954° E</div>
         <div className="decal-right">ROOT.DEPTH.SIM // V 2.4.1</div>

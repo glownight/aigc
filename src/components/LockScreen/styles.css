@@ -181,6 +181,145 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+.forest-lock-screen .password-zone {
+  align-self: end;
+  justify-self: center;
+  width: min(92vw, 26rem);
+  margin-bottom: 2vh;
+  pointer-events: auto;
+}
+
+.forest-lock-screen .password-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  padding: 1rem 1.05rem;
+  border: 1px solid rgba(122, 125, 118, 0.28);
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(28, 29, 26, 0.6), rgba(10, 11, 10, 0.76)),
+    rgba(10, 11, 10, 0.42);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  animation: password-rise 0.45s var(--ease-out);
+}
+
+.forest-lock-screen .password-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  color: var(--c-ash);
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.forest-lock-screen .password-field {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid rgba(122, 125, 118, 0.22);
+  border-radius: 999px;
+  background: rgba(10, 11, 10, 0.52);
+  transition:
+    border-color 0.3s ease,
+    box-shadow 0.3s ease,
+    opacity 0.3s ease;
+}
+
+.forest-lock-screen .password-field:focus-within {
+  border-color: rgba(227, 222, 203, 0.38);
+  box-shadow: 0 0 0 1px rgba(227, 222, 203, 0.08);
+}
+
+.forest-lock-screen .password-field.has-error {
+  border-color: rgba(198, 143, 135, 0.62);
+  box-shadow: 0 0 0 1px rgba(198, 143, 135, 0.08);
+}
+
+.forest-lock-screen .password-field.is-disabled {
+  opacity: 0.6;
+}
+
+.forest-lock-screen .password-prefix {
+  flex: none;
+  color: var(--c-ash);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.forest-lock-screen .password-input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--c-bone);
+  font-family: var(--font-mono);
+  font-size: 0.94rem;
+  letter-spacing: 0.22em;
+  caret-color: var(--c-bone);
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.forest-lock-screen .password-input::placeholder {
+  color: rgba(122, 125, 118, 0.72);
+  letter-spacing: 0.08em;
+}
+
+.forest-lock-screen .password-input:disabled {
+  cursor: not-allowed;
+}
+
+.forest-lock-screen .password-feedback {
+  min-height: 1rem;
+  color: var(--c-ash);
+  font-family: var(--font-mono);
+  font-size: 0.64rem;
+  letter-spacing: 0.1em;
+}
+
+.forest-lock-screen .password-feedback.has-error {
+  color: #d0a59c;
+}
+
+.forest-lock-screen .password-submit {
+  align-self: end;
+  padding: 0.58rem 1rem;
+  border: 1px solid rgba(227, 222, 203, 0.24);
+  border-radius: 999px;
+  background: rgba(227, 222, 203, 0.08);
+  color: var(--c-bone);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition:
+    transform 0.3s var(--ease-out),
+    border-color 0.3s ease,
+    background-color 0.3s ease,
+    opacity 0.3s ease;
+}
+
+.forest-lock-screen .password-submit:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: rgba(227, 222, 203, 0.42);
+  background: rgba(227, 222, 203, 0.14);
+}
+
+.forest-lock-screen .password-submit:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .forest-lock-screen .interaction-zone:focus {
   outline: none;
 }
@@ -320,6 +459,18 @@
   }
 }
 
+@keyframes password-rise {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @media (max-width: 900px) {
   .forest-lock-screen .ui-layer {
     padding: 1.8rem 1.4rem;
@@ -332,6 +483,10 @@
 
   .forest-lock-screen .date-composition {
     gap: 1rem;
+  }
+
+  .forest-lock-screen .password-zone {
+    width: min(94vw, 24rem);
   }
 }
 
@@ -377,6 +532,34 @@
   .forest-lock-screen .decal-left,
   .forest-lock-screen .decal-right {
     display: none;
+  }
+
+  .forest-lock-screen .password-panel {
+    gap: 0.72rem;
+    padding: 0.9rem;
+  }
+
+  .forest-lock-screen .password-meta {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.35rem;
+  }
+
+  .forest-lock-screen .password-field {
+    padding: 0.78rem 0.88rem;
+  }
+
+  .forest-lock-screen .password-prefix {
+    font-size: 0.64rem;
+  }
+
+  .forest-lock-screen .password-input {
+    font-size: 0.88rem;
+    letter-spacing: 0.16em;
+  }
+
+  .forest-lock-screen .password-submit {
+    align-self: stretch;
   }
 }
 
