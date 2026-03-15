@@ -12,6 +12,21 @@ type ApiRequest = IncomingMessage & {
 
 class RequestBodyParseError extends Error {}
 
+function getRuntimeChatProxyEnv(): Record<string, string | undefined> {
+  return {
+    OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+    CODEX_FOR_ME_API_KEY: process.env.CODEX_FOR_ME_API_KEY,
+    UPSTREAM_API_KEY: process.env.UPSTREAM_API_KEY,
+    SUANLI_API_KEY: process.env.SUANLI_API_KEY,
+    OPENAI_API_BASE_URL: process.env.OPENAI_API_BASE_URL,
+    CODEX_FOR_ME_BASE_URL: process.env.CODEX_FOR_ME_BASE_URL,
+    UPSTREAM_URL: process.env.UPSTREAM_URL,
+    OPENAI_DEFAULT_MODEL: process.env.OPENAI_DEFAULT_MODEL,
+    CODEX_DEFAULT_MODEL: process.env.CODEX_DEFAULT_MODEL,
+    UPSTREAM_MODEL: process.env.UPSTREAM_MODEL,
+  };
+}
+
 function writeJson(res: ServerResponse, statusCode: number, body: { error: string }) {
   res.statusCode = statusCode;
   res.setHeader("Content-Type", "application/json; charset=utf-8");
@@ -83,7 +98,11 @@ export default async function handler(req: ApiRequest, res: ServerResponse) {
 
   try {
     const body = await getRequestBody(req);
-    const result = await createUpstreamChatRequest(body, req.headers ?? {});
+    const result = await createUpstreamChatRequest(
+      body,
+      req.headers ?? {},
+      getRuntimeChatProxyEnv(),
+    );
     await writeProxyResultToNodeResponse(res, result);
   } catch (error) {
     if (res.headersSent || res.writableEnded) {

@@ -24,6 +24,7 @@ type ProxySuccess = {
 };
 
 type ProxyResult = ProxyFailure | ProxySuccess;
+type ChatProxyEnv = Record<string, string | undefined>;
 
 type NodeLikeResponse = {
   statusCode: number;
@@ -101,22 +102,32 @@ export function getChatProxyDefaults() {
 export async function createUpstreamChatRequest(
   body: unknown,
   headers: HeaderBag,
-  env: Record<string, string | undefined> = process.env,
+  env: ChatProxyEnv,
 ): Promise<ProxyResult> {
+  const bearerToken = getBearerToken(headers);
   const apiKey = pickFirstValue(
     env.OPENAI_API_KEY,
     env.CODEX_FOR_ME_API_KEY,
     env.UPSTREAM_API_KEY,
     env.SUANLI_API_KEY,
-    getBearerToken(headers),
+    bearerToken,
   );
 
   if (!apiKey) {
+    console.error("[chatProxy] missing API key at runtime", {
+      hasOpenAIApiKey: Boolean(env.OPENAI_API_KEY?.trim()),
+      hasCodexForMeApiKey: Boolean(env.CODEX_FOR_ME_API_KEY?.trim()),
+      hasUpstreamApiKey: Boolean(env.UPSTREAM_API_KEY?.trim()),
+      hasSuanliApiKey: Boolean(env.SUANLI_API_KEY?.trim()),
+      hasBearerToken: Boolean(bearerToken),
+    });
+
     return {
       ok: false,
       status: 500,
       body: {
-        error: "Missing API key. Set OPENAI_API_KEY in .env.local or enter a key in Settings.",
+        error:
+          "Missing API key. Set OPENAI_API_KEY in server env (.env.local / Vercel Project Settings) or enter a key in Settings.",
       },
     };
   }
