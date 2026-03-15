@@ -1,2 +1,314 @@
-/* ChatMessages 样式在主 App.css 中定义 */
-/* 这里保留为空，以便将来可以独立样式 */
+.workspace-messages.list {
+  padding: 1.45rem 1.25rem 2.4rem;
+  scroll-padding-bottom: 2rem;
+}
+
+.workspace-messages.list::-webkit-scrollbar {
+  width: 7px;
+}
+
+.workspace-messages.list::-webkit-scrollbar-thumb {
+  background: rgba(122, 125, 118, 0.32);
+  border-radius: 999px;
+}
+
+.workspace-messages .workspace-message {
+  position: relative;
+  align-items: flex-start;
+  gap: 1rem;
+  max-width: 920px;
+  margin-bottom: 1.25rem;
+  animation: workspace-message-enter 0.32s ease both;
+}
+
+.workspace-messages .workspace-message:last-child {
+  margin-bottom: 0;
+}
+
+.workspace-messages .workspace-message__avatar.role {
+  width: 44px;
+  height: 44px;
+  margin-top: 0.25rem;
+  border: 1px solid rgba(122, 125, 118, 0.24);
+  border-radius: 16px;
+  background:
+    linear-gradient(180deg, rgba(28, 29, 26, 0.72), rgba(10, 11, 10, 0.88)),
+    rgba(10, 11, 10, 0.48);
+  color: rgba(227, 222, 203, 0.92);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.64rem;
+  font-weight: 400;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  box-shadow:
+    inset 0 1px 0 rgba(227, 222, 203, 0.04),
+    0 14px 32px rgba(0, 0, 0, 0.18);
+}
+
+.workspace-messages .workspace-message--user .workspace-message__avatar.role {
+  border-color: rgba(227, 222, 203, 0.24);
+  background:
+    linear-gradient(
+      180deg,
+      rgba(227, 222, 203, 0.14),
+      rgba(227, 222, 203, 0.05)
+    ),
+    rgba(10, 11, 10, 0.32);
+  color: rgba(247, 243, 232, 0.96);
+}
+
+.workspace-messages .workspace-message__bubble.bubble {
+  flex: 1 1 auto;
+  max-width: none;
+  padding: 1rem 1.15rem 1.08rem;
+  border: 1px solid rgba(122, 125, 118, 0.22);
+  border-radius: 28px;
+  background:
+    linear-gradient(180deg, rgba(28, 29, 26, 0.74), rgba(10, 11, 10, 0.9)),
+    radial-gradient(
+      circle at 18% 0%,
+      rgba(54, 61, 50, 0.18),
+      transparent 52%
+    );
+  box-shadow:
+    inset 0 1px 0 rgba(227, 222, 203, 0.04),
+    0 20px 48px rgba(0, 0, 0, 0.22);
+  backdrop-filter: blur(22px) saturate(138%);
+  -webkit-backdrop-filter: blur(22px) saturate(138%);
+  overflow: hidden;
+}
+
+.workspace-messages .workspace-message__bubble.bubble::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    120deg,
+    transparent 12%,
+    rgba(227, 222, 203, 0.04) 48%,
+    transparent 88%
+  );
+  pointer-events: none;
+}
+
+.workspace-messages .workspace-message__bubble.bubble:hover {
+  transform: translateY(-1px);
+  border-color: rgba(227, 222, 203, 0.2);
+  box-shadow:
+    inset 0 1px 0 rgba(227, 222, 203, 0.05),
+    0 24px 52px rgba(0, 0, 0, 0.24);
+}
+
+.workspace-messages .workspace-message--assistant .workspace-message__bubble {
+  max-width: min(100%, 860px);
+}
+
+.workspace-messages .workspace-message--user .workspace-message__bubble {
+  max-width: min(100%, 720px);
+  border-color: rgba(227, 222, 203, 0.22);
+  background:
+    linear-gradient(
+      180deg,
+      rgba(227, 222, 203, 0.14),
+      rgba(227, 222, 203, 0.05)
+    ),
+    linear-gradient(180deg, rgba(28, 29, 26, 0.72), rgba(10, 11, 10, 0.88));
+  color: rgba(247, 243, 232, 0.96);
+}
+
+.workspace-messages .workspace-message__meta {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  margin-bottom: 0.82rem;
+  padding-bottom: 0.76rem;
+  border-bottom: 1px solid rgba(122, 125, 118, 0.14);
+}
+
+.workspace-messages .workspace-message__eyebrow,
+.workspace-messages .workspace-message__state {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.62rem;
+  font-weight: 300;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.workspace-messages .workspace-message__eyebrow {
+  color: rgba(122, 125, 118, 0.92);
+}
+
+.workspace-messages .workspace-message__state {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 1.85rem;
+  padding: 0.34rem 0.68rem;
+  border: 1px solid rgba(122, 125, 118, 0.16);
+  border-radius: 999px;
+  background: rgba(227, 222, 203, 0.04);
+  color: rgba(227, 222, 203, 0.74);
+  white-space: nowrap;
+}
+
+.workspace-messages .workspace-message__state--live {
+  border-color: rgba(184, 197, 171, 0.26);
+  background: rgba(184, 197, 171, 0.09);
+  color: rgba(227, 222, 203, 0.92);
+}
+
+.workspace-messages .workspace-message__state-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #b8c5ab;
+  box-shadow: 0 0 0 0 rgba(184, 197, 171, 0.28);
+  animation: workspace-message-pulse 1.8s ease infinite;
+}
+
+.workspace-messages .workspace-message__loading.loading-indicator {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 0.9rem;
+  align-items: flex-start;
+  padding: 0.2rem 0 0.05rem;
+}
+
+.workspace-messages .workspace-message__loading .typing-dots {
+  gap: 0.42rem;
+}
+
+.workspace-messages .workspace-message__loading .typing-dots span {
+  width: 8px;
+  height: 8px;
+  background: rgba(227, 222, 203, 0.82);
+  box-shadow: 0 0 12px rgba(184, 197, 171, 0.16);
+}
+
+.workspace-messages .workspace-message__loading-copy {
+  display: grid;
+  gap: 0.52rem;
+  width: min(22rem, 100%);
+}
+
+.workspace-messages .workspace-message__loading-line {
+  height: 10px;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    rgba(122, 125, 118, 0.16),
+    rgba(227, 222, 203, 0.16),
+    rgba(122, 125, 118, 0.16)
+  );
+  background-size: 220% 100%;
+  animation: workspace-message-sheen 1.8s ease infinite;
+}
+
+.workspace-messages .workspace-message__loading-line--short {
+  width: 68%;
+}
+
+@keyframes workspace-message-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes workspace-message-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(184, 197, 171, 0.24);
+  }
+
+  70% {
+    box-shadow: 0 0 0 8px rgba(184, 197, 171, 0);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(184, 197, 171, 0);
+  }
+}
+
+@keyframes workspace-message-sheen {
+  0% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: -100% 50%;
+  }
+}
+
+@media (max-width: 768px) {
+  .workspace-messages.list {
+    padding: 1.1rem 1rem 1.9rem;
+  }
+
+  .workspace-messages .workspace-message {
+    gap: 0.8rem;
+    margin-bottom: 1rem;
+  }
+
+  .workspace-messages .workspace-message__avatar.role {
+    width: 40px;
+    height: 40px;
+    border-radius: 14px;
+    font-size: 0.6rem;
+  }
+
+  .workspace-messages .workspace-message__bubble.bubble {
+    padding: 0.92rem 0.95rem 0.98rem;
+    border-radius: 24px;
+  }
+
+  .workspace-messages .workspace-message__meta {
+    margin-bottom: 0.72rem;
+    padding-bottom: 0.68rem;
+  }
+}
+
+@media (max-width: 560px) {
+  .workspace-messages.list {
+    padding-inline: 0.85rem;
+  }
+
+  .workspace-messages .workspace-message {
+    gap: 0.7rem;
+  }
+
+  .workspace-messages .workspace-message__bubble.bubble {
+    border-radius: 22px;
+  }
+
+  .workspace-messages .workspace-message__meta {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.45rem;
+  }
+
+  .workspace-messages .workspace-message__state {
+    min-height: 1.65rem;
+    padding-inline: 0.58rem;
+  }
+}
+
+@media (max-width: 420px) {
+  .workspace-messages .workspace-message__avatar.role {
+    width: 36px;
+    height: 36px;
+    border-radius: 13px;
+  }
+
+  .workspace-messages .workspace-message__bubble.bubble {
+    padding: 0.86rem 0.88rem 0.92rem;
+  }
+}

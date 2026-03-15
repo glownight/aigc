@@ -6,7 +6,6 @@ import { memo } from "react";
 import "./styles.css";
 
 interface ChatHeaderProps {
-  statusText: string;
   remoteModel?: string;
   onToggleSidebar: () => void;
   onShowSettings: () => void;
@@ -15,7 +14,6 @@ interface ChatHeaderProps {
 }
 
 const ChatHeader = memo(function ChatHeader({
-  statusText,
   remoteModel,
   onToggleSidebar,
   onShowSettings,
@@ -23,30 +21,63 @@ const ChatHeader = memo(function ChatHeader({
   onLock,
 }: ChatHeaderProps) {
   return (
-    <header className="header">
-      <div className="topbar-left">
-        <button className="btn ghost" onClick={onToggleSidebar}>
-          ☰
+    <header className="header workspace-header">
+      <div className="workspace-header__left">
+        <button
+          className="btn workspace-header__menu"
+          type="button"
+          onClick={onToggleSidebar}
+          aria-label="打开会话列表"
+          title="会话列表"
+        >
+          <span className="workspace-header__menu-lines" aria-hidden="true">
+            <span />
+            <span />
+            <span />
+          </span>
         </button>
       </div>
-      <div className="topbar-right">
-        <div className="status-mini">
-          <div className="progress-container">
-            <span className="progress-text">{statusText}</span>
-          </div>
 
-          <span className="ready-dot" data-ready="true"></span>
-          <span className="engine-indicator">{remoteModel || "Remote API"}</span>
+      <div className="workspace-header__right">
+        <div className="workspace-header__status" aria-live="polite">
+          <div className="workspace-header__status-chip">
+            <span className="ready-dot" data-ready="true" />
+            <span className="engine-indicator">
+              {remoteModel || "Remote API"}
+            </span>
+          </div>
         </div>
-        <button className="btn danger" onClick={onNewSession}>
-          新会话
-        </button>
-        <button className="btn ghost" onClick={onShowSettings}>
-          设置
-        </button>
-        <button className="btn ghost" onClick={onLock} title="锁定应用">
-          🔒
-        </button>
+
+        <div className="workspace-header__actions">
+          <button
+            className="btn workspace-header__action workspace-header__action--emphasis"
+            type="button"
+            onClick={onNewSession}
+          >
+            <span className="workspace-header__action-kicker">New</span>
+            <span className="workspace-header__action-label">新会话</span>
+          </button>
+
+          <button
+            className="btn workspace-header__action"
+            type="button"
+            onClick={onShowSettings}
+          >
+            <span className="workspace-header__action-kicker">Control</span>
+            <span className="workspace-header__action-label">设置</span>
+          </button>
+
+          <button
+            className="btn workspace-header__action workspace-header__action--lock"
+            type="button"
+            onClick={onLock}
+            title="锁定应用"
+            aria-label="锁定应用"
+          >
+            <span className="workspace-header__action-kicker">Lock</span>
+            <span className="workspace-header__action-label">锁定</span>
+          </button>
+        </div>
       </div>
     </header>
   );

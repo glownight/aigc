@@ -53,20 +53,6 @@ const SettingsModal = memo(function SettingsModal({
           </div>
 
           <div className="field">
-            <label>服务商</label>
-            <input type="text" value={remoteApiConfig.providerName || "codex-for-me"} disabled />
-          </div>
-
-          <div className="field">
-            <label>上游地址</label>
-            <input
-              type="text"
-              value={remoteApiConfig.upstreamBaseURL || "https://api-vip.codex-for.me/v1"}
-              disabled
-            />
-          </div>
-
-          <div className="field">
             <label>模型名称</label>
             <input type="text" value={remoteApiConfig.model} disabled />
           </div>

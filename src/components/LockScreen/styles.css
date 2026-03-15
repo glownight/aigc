@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500&family=JetBrains+Mono:wght@100;300;400&family=Noto+Serif+SC:wght@200;300;400;500&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500&family=JetBrains+Mono:wght@100;300;400&family=Noto+Serif+SC:wght@200;300;400;500&display=optional");
 
 .forest-lock-screen {
   --c-void: #0a0b0a;
@@ -7,8 +7,20 @@
   --c-bone: #e3decb;
   --c-ash: #7a7d76;
   --c-ash-dim: rgba(122, 125, 118, 0.4);
-  --font-serif: "Cormorant Garamond", "Noto Serif SC", "Songti SC", serif;
-  --font-mono: "JetBrains Mono", monospace;
+  --font-serif:
+    "Cormorant Garamond",
+    "Noto Serif SC",
+    "Palatino Linotype",
+    "Book Antiqua",
+    "Songti SC",
+    "SimSun",
+    serif;
+  --font-mono:
+    "JetBrains Mono",
+    "SFMono-Regular",
+    "Cascadia Code",
+    Consolas,
+    monospace;
   --ease-slow: cubic-bezier(0.2, 0.8, 0.2, 1);
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
 

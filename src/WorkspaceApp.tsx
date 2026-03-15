@@ -251,7 +251,6 @@ function WorkspaceApp({ onLock }: WorkspaceAppProps) {
   return (
     <div className={`app theme-${theme}`}>
       <ChatHeader
-        statusText={remoteApiConfig.providerName || "codex-for-me"}
         remoteModel={remoteApiConfig.model}
         onToggleSidebar={() => setShowSidebar(!showSidebar)}
         onShowSettings={() => setShowSettings(true)}

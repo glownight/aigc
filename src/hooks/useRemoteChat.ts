@@ -2,9 +2,23 @@
  * useRemoteChat Hook - 管理远程 API 聊天
  */
 
-import { useState } from "react";
-import type { Message, Role, RemoteApiConfig } from "../types";
+import { useRef, useState } from "react";
+import type { Message, RemoteApiConfig, Role } from "../types";
 import { uid } from "../utils/uid";
+
+type StreamEventPayload = {
+  type?: string;
+  delta?: string;
+  error?: { message?: string };
+  message?: string;
+  choices?: Array<{ delta?: { content?: string } }>;
+};
+
+type ActiveRequestState = {
+  controller: AbortController;
+  latestMessages: Message[];
+  syncMessages: (messages: Message[]) => void;
+};
 
 function normalizeRemoteChatEndpoint(rawBaseURL: string): string {
   const trimmed = rawBaseURL.trim().replace(/\/+$/, "");
@@ -71,13 +85,43 @@ function formatRequestError(error: unknown): string {
   return rawMessage;
 }
 
+function isEmptyAssistantMessage(message: Message): boolean {
+  return message.role === "assistant" && !message.content.trim();
+}
+
+function stripEmptyAssistantMessages(messages: Message[]): Message[] {
+  const cleanedMessages = messages.filter((message) => !isEmptyAssistantMessage(message));
+  return cleanedMessages.length === messages.length ? messages : cleanedMessages;
+}
+
+function getStreamDataLines(block: string): string[] {
+  return block
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.startsWith("data: "))
+    .map((line) => line.slice(6));
+}
+
+function getStreamDelta(data: string): string {
+  const parsed = JSON.parse(data) as StreamEventPayload;
+
+  if (parsed.type === "error") {
+    throw new Error(parsed.error?.message || parsed.message || "流式响应出错");
+  }
+
+  return (
+    parsed.choices?.[0]?.delta?.content ||
+    (parsed.type === "response.output_text.delta" ? parsed.delta || "" : "")
+  );
+}
+
 export function useRemoteChat(
   apiConfig: RemoteApiConfig,
   sessionMessages: Message[],
   updateCurrentSession: (messages: Message[]) => void,
 ) {
   const [loading, setLoading] = useState(false);
-  const [abortController, setAbortController] = useState<AbortController | null>(null);
+  const activeRequestRef = useRef<ActiveRequestState | null>(null);
 
   async function handleSend(text: string): Promise<void> {
     if (!(text.trim().length > 0) || loading) {
@@ -91,12 +135,25 @@ export function useRemoteChat(
     const userMsg: Message = { id: uid(), role: "user", content: text.trim() };
     const assistantId = uid();
     const newMessages = [...sessionMessages, userMsg];
-    updateCurrentSession(newMessages);
+    const controller = new AbortController();
+    const syncMessages = (messages: Message[]) => {
+      if (activeRequestRef.current?.controller === controller) {
+        activeRequestRef.current.latestMessages = messages;
+      }
 
+      updateCurrentSession(messages);
+    };
+
+    activeRequestRef.current = {
+      controller,
+      latestMessages: newMessages,
+      syncMessages,
+    };
+
+    syncMessages(newMessages);
     setLoading(true);
 
-    const controller = new AbortController();
-    setAbortController(controller);
+    let flushPendingContentForCleanup: (() => void) | null = null;
 
     try {
       const sendMessages = sessionMessages
@@ -142,7 +199,7 @@ export function useRemoteChat(
       const decoder = new TextDecoder();
       let assistantMessage: Message = {
         id: assistantId,
-        role: "assistant" as Role,
+        role: "assistant",
         content: "",
       };
       let hasStartedStreaming = false;
@@ -152,6 +209,11 @@ export function useRemoteChat(
       const updateInterval = 50;
       const minCharsToUpdate = 3;
 
+      const syncAssistantMessage = () => {
+        syncMessages([...newMessages, { ...assistantMessage }]);
+        lastUpdateTime = Date.now();
+      };
+
       const flushPendingContent = () => {
         if (!pendingContent) {
           return;
@@ -159,81 +221,14 @@ export function useRemoteChat(
 
         assistantMessage.content += pendingContent;
         pendingContent = "";
-        updateCurrentSession([...newMessages, { ...assistantMessage }]);
-        lastUpdateTime = Date.now();
+        syncAssistantMessage();
       };
 
-      while (true) {
-        const { done, value } = await reader.read();
+      flushPendingContentForCleanup = flushPendingContent;
 
-        if (value) {
-          streamBuffer += decoder.decode(value, { stream: !done });
-        }
-
-        const eventBlocks = streamBuffer.split("\n\n");
-        streamBuffer = done ? "" : eventBlocks.pop() || "";
-
-        if (done) {
-          for (const block of eventBlocks) {
-            const dataLines = block
-              .split("\n")
-              .map((line) => line.trim())
-              .filter((line) => line.startsWith("data: "))
-              .map((line) => line.slice(6));
-
-            for (const data of dataLines) {
-              if (data === "[DONE]") {
-                continue;
-              }
-
-              try {
-                const parsed = JSON.parse(data) as {
-                  type?: string;
-                  delta?: string;
-                  error?: { message?: string };
-                  message?: string;
-                  choices?: Array<{ delta?: { content?: string } }>;
-                };
-
-                if (parsed.type === "error") {
-                  throw new Error(parsed.error?.message || parsed.message || "流式响应出错");
-                }
-
-                const delta =
-                  parsed.choices?.[0]?.delta?.content ||
-                  (parsed.type === "response.output_text.delta" ? parsed.delta || "" : "");
-
-                if (!delta) {
-                  continue;
-                }
-
-                if (!hasStartedStreaming) {
-                  assistantMessage.content = delta;
-                  hasStartedStreaming = true;
-                  updateCurrentSession([...newMessages, { ...assistantMessage }]);
-                  lastUpdateTime = Date.now();
-                } else {
-                  pendingContent += delta;
-                }
-              } catch (error) {
-                console.warn("[useRemoteChat] skipped stream event:", error);
-              }
-            }
-          }
-
-          flushPendingContent();
-          if (import.meta.env.DEV) {
-            console.log("[useRemoteChat] response completed:", assistantMessage.content.length);
-          }
-          break;
-        }
-
+      const processEventBlocks = (eventBlocks: string[]) => {
         for (const block of eventBlocks) {
-          const dataLines = block
-            .split("\n")
-            .map((line) => line.trim())
-            .filter((line) => line.startsWith("data: "))
-            .map((line) => line.slice(6));
+          const dataLines = getStreamDataLines(block);
 
           for (const data of dataLines) {
             if (data === "[DONE]") {
@@ -241,21 +236,7 @@ export function useRemoteChat(
             }
 
             try {
-              const parsed = JSON.parse(data) as {
-                type?: string;
-                delta?: string;
-                error?: { message?: string };
-                message?: string;
-                choices?: Array<{ delta?: { content?: string } }>;
-              };
-
-              if (parsed.type === "error") {
-                throw new Error(parsed.error?.message || parsed.message || "流式响应出错");
-              }
-
-              const delta =
-                parsed.choices?.[0]?.delta?.content ||
-                (parsed.type === "response.output_text.delta" ? parsed.delta || "" : "");
+              const delta = getStreamDelta(data);
 
               if (!delta) {
                 continue;
@@ -268,8 +249,7 @@ export function useRemoteChat(
               if (!hasStartedStreaming) {
                 assistantMessage.content = delta;
                 hasStartedStreaming = true;
-                updateCurrentSession([...newMessages, { ...assistantMessage }]);
-                lastUpdateTime = Date.now();
+                syncAssistantMessage();
                 continue;
               }
 
@@ -284,48 +264,84 @@ export function useRemoteChat(
                 flushPendingContent();
               }
             } catch (error) {
-              console.warn("[useRemoteChat] skipped stream event:", error);
+              if (error instanceof SyntaxError) {
+                console.warn("[useRemoteChat] skipped stream event:", error);
+                continue;
+              }
+
+              throw error;
             }
           }
+        }
+      };
+
+      while (true) {
+        const { done, value } = await reader.read();
+
+        if (value) {
+          streamBuffer += decoder.decode(value, { stream: true });
+        }
+
+        if (done) {
+          streamBuffer += decoder.decode();
+        }
+
+        const eventBlocks = streamBuffer.split("\n\n");
+        streamBuffer = done ? "" : eventBlocks.pop() || "";
+        processEventBlocks(eventBlocks);
+
+        if (done) {
+          flushPendingContent();
+          if (import.meta.env.DEV) {
+            console.log("[useRemoteChat] response completed:", assistantMessage.content.length);
+          }
+          break;
         }
       }
     } catch (error) {
       console.error("[useRemoteChat] request failed:", error);
+      flushPendingContentForCleanup?.();
 
       if (controller.signal.aborted) {
-        const cleanedMessages = [...sessionMessages, userMsg].filter(
-          (message) => !(message.role === "assistant" && !message.content?.trim()),
-        );
-        updateCurrentSession(cleanedMessages);
+        const latestMessages =
+          activeRequestRef.current?.controller === controller
+            ? activeRequestRef.current.latestMessages
+            : newMessages;
+        const cleanedMessages = stripEmptyAssistantMessages(latestMessages);
+
+        if (cleanedMessages !== latestMessages) {
+          syncMessages(cleanedMessages);
+        }
         return;
       }
 
       const errorMsg: Message = {
         id: uid(),
-        role: "assistant" as Role,
+        role: "assistant",
         content: `请求出错：${formatRequestError(error)}`,
       };
-      updateCurrentSession([...sessionMessages, userMsg, errorMsg]);
+      syncMessages([...newMessages, errorMsg]);
     } finally {
-      setLoading(false);
-      setAbortController(null);
+      if (activeRequestRef.current?.controller === controller) {
+        activeRequestRef.current = null;
+        setLoading(false);
+      }
     }
   }
 
   function handleStop() {
-    if (abortController) {
-      abortController.abort();
+    const activeRequest = activeRequestRef.current;
+    if (!activeRequest) {
+      return;
     }
 
+    activeRequest.controller.abort();
     setLoading(false);
-    setAbortController(null);
 
-    const cleanedMessages = sessionMessages.filter(
-      (message: Message) => !(message.role === "assistant" && !message.content?.trim()),
-    );
-    if (cleanedMessages.length !== sessionMessages.length) {
+    const cleanedMessages = stripEmptyAssistantMessages(activeRequest.latestMessages);
+    if (cleanedMessages !== activeRequest.latestMessages) {
       console.log("[useRemoteChat] cleaned empty assistant message");
-      updateCurrentSession(cleanedMessages);
+      activeRequest.syncMessages(cleanedMessages);
     }
   }
 

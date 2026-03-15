@@ -1,2 +1,274 @@
-/* ChatComposer 样式在主 App.css 中定义 */
-/* 这里保留为空，以便将来可以独立样式 */
+.workspace-composer.composer {
+  position: relative;
+  display: block;
+  max-width: 920px;
+  padding: 1rem 1.25rem 1.35rem;
+  border-top: 0;
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.workspace-composer__panel {
+  position: relative;
+  width: 100%;
+  padding: 1.05rem;
+  border: 1px solid rgba(122, 125, 118, 0.22);
+  border-radius: 28px;
+  background:
+    linear-gradient(180deg, rgba(28, 29, 26, 0.72), rgba(10, 11, 10, 0.9)),
+    radial-gradient(circle at 50% 0%, rgba(54, 61, 50, 0.2), transparent 58%);
+  box-shadow:
+    inset 0 1px 0 rgba(227, 222, 203, 0.04),
+    0 20px 48px rgba(0, 0, 0, 0.24);
+  backdrop-filter: blur(22px) saturate(135%);
+  -webkit-backdrop-filter: blur(22px) saturate(135%);
+  overflow: hidden;
+}
+
+.workspace-composer__panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    120deg,
+    transparent 12%,
+    rgba(227, 222, 203, 0.04) 50%,
+    transparent 88%
+  );
+  pointer-events: none;
+}
+
+.workspace-composer__body {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: flex-end;
+  gap: 0.9rem;
+}
+
+.workspace-composer__field {
+  flex: 1 1 auto;
+  display: grid;
+  gap: 0.75rem;
+  min-width: 0;
+  padding: 0.9rem 1rem 1rem;
+  border: 1px solid rgba(122, 125, 118, 0.18);
+  border-radius: 22px;
+  background:
+    linear-gradient(180deg, rgba(10, 11, 10, 0.18), rgba(10, 11, 10, 0.34)),
+    rgba(227, 222, 203, 0.02);
+  box-shadow: inset 0 1px 0 rgba(227, 222, 203, 0.03);
+  transition:
+    border-color 0.3s ease,
+    background-color 0.3s ease,
+    box-shadow 0.3s ease,
+    transform 0.3s ease;
+}
+
+.workspace-composer__field:hover {
+  border-color: rgba(227, 222, 203, 0.18);
+  background:
+    linear-gradient(180deg, rgba(12, 13, 11, 0.24), rgba(10, 11, 10, 0.4)),
+    rgba(227, 222, 203, 0.03);
+}
+
+.workspace-composer__field:focus-within {
+  border-color: rgba(227, 222, 203, 0.34);
+  box-shadow:
+    0 0 0 1px rgba(227, 222, 203, 0.08),
+    0 12px 30px rgba(0, 0, 0, 0.2);
+  transform: translateY(-1px);
+}
+
+.workspace-composer__field-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  min-width: 0;
+  color: rgba(122, 125, 118, 0.92);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.62rem;
+  font-weight: 300;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.workspace-composer__prefix,
+.workspace-composer__hint {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace-composer__hint {
+  text-align: right;
+}
+
+.workspace-composer.composer .workspace-composer__textarea {
+  width: 100%;
+  min-height: 4.8rem;
+  max-height: 9.6rem;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: rgba(227, 222, 203, 0.95);
+  font-size: 0.98rem;
+  line-height: 1.65;
+  resize: none;
+  outline: none;
+  box-shadow: none;
+  caret-color: rgba(227, 222, 203, 0.95);
+}
+
+.workspace-composer.composer .workspace-composer__textarea::placeholder {
+  color: rgba(122, 125, 118, 0.72);
+}
+
+.workspace-composer.composer .workspace-composer__textarea:focus {
+  box-shadow: none;
+}
+
+.workspace-composer__actions {
+  flex: 0 0 auto;
+  align-items: stretch;
+}
+
+.workspace-composer__button.btn {
+  min-width: 108px;
+  min-height: 100%;
+  padding: 0.85rem 1rem 0.9rem;
+  border: 1px solid rgba(227, 222, 203, 0.22);
+  border-radius: 20px;
+  background:
+    linear-gradient(180deg, rgba(227, 222, 203, 0.12), rgba(227, 222, 203, 0.06)),
+    rgba(10, 11, 10, 0.34);
+  color: rgba(227, 222, 203, 0.96);
+  box-shadow:
+    inset 0 1px 0 rgba(227, 222, 203, 0.05),
+    0 12px 28px rgba(0, 0, 0, 0.18);
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.26rem;
+  transition:
+    transform 0.3s ease,
+    border-color 0.3s ease,
+    background-color 0.3s ease,
+    box-shadow 0.3s ease,
+    opacity 0.3s ease;
+}
+
+.workspace-composer__button.btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: rgba(227, 222, 203, 0.34);
+  background:
+    linear-gradient(180deg, rgba(227, 222, 203, 0.18), rgba(227, 222, 203, 0.08)),
+    rgba(10, 11, 10, 0.42);
+  box-shadow:
+    inset 0 1px 0 rgba(227, 222, 203, 0.06),
+    0 16px 30px rgba(0, 0, 0, 0.2);
+}
+
+.workspace-composer__button.btn:focus-visible {
+  box-shadow:
+    0 0 0 1px rgba(227, 222, 203, 0.16),
+    0 0 0 4px rgba(227, 222, 203, 0.06),
+    0 16px 30px rgba(0, 0, 0, 0.2);
+}
+
+.workspace-composer__button.btn:disabled {
+  opacity: 0.48;
+  transform: none;
+  box-shadow: inset 0 1px 0 rgba(227, 222, 203, 0.04);
+}
+
+.workspace-composer__button--danger.btn,
+.workspace-composer__actions .workspace-composer__button--danger.btn {
+  border-color: rgba(208, 165, 156, 0.34);
+  background:
+    linear-gradient(180deg, rgba(208, 165, 156, 0.16), rgba(208, 165, 156, 0.08)),
+    rgba(28, 14, 13, 0.48);
+  color: #f3dfd9;
+  animation: none;
+}
+
+.workspace-composer__button--danger.btn:hover:not(:disabled),
+.workspace-composer__actions .workspace-composer__button--danger.btn:hover:not(:disabled) {
+  border-color: rgba(208, 165, 156, 0.5);
+  background:
+    linear-gradient(180deg, rgba(208, 165, 156, 0.22), rgba(208, 165, 156, 0.12)),
+    rgba(34, 17, 16, 0.56);
+}
+
+.workspace-composer__button-kicker {
+  color: rgba(122, 125, 118, 0.9);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.62rem;
+  font-weight: 300;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.workspace-composer__button-label {
+  font-size: 0.94rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.workspace-composer[data-loading="true"] .workspace-composer__prefix,
+.workspace-composer[data-loading="true"] .workspace-composer__button-kicker {
+  color: rgba(227, 222, 203, 0.72);
+}
+
+@media (max-width: 768px) {
+  .workspace-composer.composer {
+    padding: 0.9rem 1rem 1.1rem;
+  }
+
+  .workspace-composer__panel {
+    padding: 0.9rem;
+    border-radius: 24px;
+  }
+
+  .workspace-composer__body {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .workspace-composer__actions,
+  .workspace-composer__button.btn {
+    width: 100%;
+  }
+}
+
+@media (max-width: 560px) {
+  .workspace-composer.composer {
+    padding-inline: 0.85rem;
+  }
+
+  .workspace-composer__field {
+    padding: 0.82rem 0.9rem 0.92rem;
+    border-radius: 20px;
+  }
+
+  .workspace-composer__field-meta {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+
+  .workspace-composer__hint {
+    text-align: left;
+    white-space: normal;
+  }
+
+  .workspace-composer.composer .workspace-composer__textarea {
+    min-height: 4.2rem;
+    font-size: 0.94rem;
+  }
+}

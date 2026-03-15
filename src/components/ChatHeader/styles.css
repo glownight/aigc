@@ -1,2 +1,391 @@
-/* ChatHeader 样式在主 App.css 中定义 */
-/* 这里保留为空，以便将来可以独立样式 */
+.header.workspace-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.2rem;
+  min-height: 88px;
+  padding: 1rem 1.4rem 1.1rem;
+  border-bottom: 1px solid rgba(122, 125, 118, 0.2);
+  background:
+    linear-gradient(180deg, rgba(28, 29, 26, 0.7), rgba(10, 11, 10, 0.88)),
+    radial-gradient(circle at 50% -40%, rgba(54, 61, 50, 0.22), transparent 58%);
+  box-shadow:
+    inset 0 1px 0 rgba(227, 222, 203, 0.04),
+    0 20px 48px rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(24px) saturate(140%);
+  -webkit-backdrop-filter: blur(24px) saturate(140%);
+  overflow: hidden;
+}
+
+.header.workspace-header::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(227, 222, 203, 0.04),
+    transparent
+  );
+  opacity: 0.85;
+  pointer-events: none;
+}
+
+.header.workspace-header > * {
+  position: relative;
+  z-index: 1;
+}
+
+.workspace-header__left,
+.workspace-header__right {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.workspace-header__left {
+  flex: 1 1 auto;
+}
+
+.workspace-header__right {
+  flex: 0 1 auto;
+  justify-content: flex-end;
+}
+
+.workspace-header__menu.btn {
+  width: 52px;
+  height: 52px;
+  padding: 0;
+  justify-content: center;
+  border: 1px solid rgba(122, 125, 118, 0.22);
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(28, 29, 26, 0.62), rgba(10, 11, 10, 0.78)),
+    rgba(10, 11, 10, 0.48);
+  color: rgba(227, 222, 203, 0.92);
+  box-shadow:
+    inset 0 1px 0 rgba(227, 222, 203, 0.05),
+    0 12px 30px rgba(0, 0, 0, 0.18);
+  flex-shrink: 0;
+}
+
+.workspace-header__menu.btn:hover {
+  transform: translateY(-1px);
+  border-color: rgba(227, 222, 203, 0.24);
+  background:
+    linear-gradient(180deg, rgba(36, 38, 34, 0.72), rgba(12, 13, 11, 0.84)),
+    rgba(10, 11, 10, 0.56);
+}
+
+.workspace-header__menu.btn:focus-visible,
+.workspace-header__action.btn:focus-visible {
+  box-shadow:
+    0 0 0 1px rgba(227, 222, 203, 0.16),
+    0 0 0 4px rgba(227, 222, 203, 0.06);
+}
+
+.workspace-header__menu-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 16px;
+}
+
+.workspace-header__menu-lines span {
+  display: block;
+  height: 1px;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.workspace-header__menu-lines span:nth-child(2) {
+  width: 16px;
+}
+
+.workspace-header__menu-lines span:first-child,
+.workspace-header__menu-lines span:last-child {
+  width: 12px;
+}
+
+.workspace-header__menu-lines span:last-child {
+  align-self: flex-end;
+}
+
+.workspace-header__brand {
+  display: grid;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.workspace-header__eyebrow,
+.workspace-header__action-kicker,
+.workspace-header__title-meta {
+  color: rgba(122, 125, 118, 0.9);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.62rem;
+  font-weight: 300;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.workspace-header__eyebrow {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.workspace-header__title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.workspace-header__title {
+  color: rgba(227, 222, 203, 0.95);
+  font-family: "Cormorant Garamond", "Noto Serif SC", "Songti SC", serif;
+  font-size: clamp(1.4rem, 2.1vw, 1.9rem);
+  font-weight: 400;
+  line-height: 0.9;
+  letter-spacing: 0.08em;
+  text-shadow: 0 12px 30px rgba(0, 0, 0, 0.28);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.workspace-header__title-divider {
+  width: 1px;
+  height: 1rem;
+  background: rgba(122, 125, 118, 0.36);
+  flex-shrink: 0;
+}
+
+.workspace-header__status {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.85rem;
+  min-width: fit-content;
+  padding: 0.75rem 0.95rem;
+  border: 1px solid rgba(122, 125, 118, 0.22);
+  border-radius: 20px;
+  background:
+    linear-gradient(180deg, rgba(28, 29, 26, 0.62), rgba(10, 11, 10, 0.78)),
+    rgba(10, 11, 10, 0.48);
+  box-shadow:
+    inset 0 1px 0 rgba(227, 222, 203, 0.04),
+    0 16px 34px rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.workspace-header__status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-width: 0;
+  padding: 0.58rem 0.75rem;
+  border: 1px solid rgba(122, 125, 118, 0.18);
+  border-radius: 999px;
+  background: rgba(227, 222, 203, 0.04);
+  flex-shrink: 0;
+}
+
+.workspace-header .ready-dot {
+  width: 8px;
+  height: 8px;
+  flex-shrink: 0;
+  background: rgba(122, 125, 118, 0.56);
+  box-shadow: 0 0 0 6px rgba(160, 184, 146, 0);
+}
+
+.workspace-header .ready-dot[data-ready="true"] {
+  background: #b8c5ab;
+  box-shadow: 0 0 14px rgba(184, 197, 171, 0.28);
+}
+
+.workspace-header .engine-indicator {
+  min-width: 0;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  color: rgba(227, 222, 203, 0.76);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.68rem;
+  font-weight: 300;
+  letter-spacing: 0.08em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace-header__actions {
+  display: flex;
+  align-items: stretch;
+  gap: 0.7rem;
+  flex-shrink: 0;
+}
+
+.workspace-header__action.btn {
+  min-width: 0;
+  padding: 0.72rem 0.95rem 0.78rem;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0.25rem;
+  border: 1px solid rgba(122, 125, 118, 0.2);
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(28, 29, 26, 0.58), rgba(10, 11, 10, 0.74)),
+    rgba(10, 11, 10, 0.42);
+  color: rgba(227, 222, 203, 0.92);
+  box-shadow: inset 0 1px 0 rgba(227, 222, 203, 0.04);
+  flex-direction: column;
+}
+
+.workspace-header__action.btn:hover {
+  transform: translateY(-1px);
+  border-color: rgba(227, 222, 203, 0.24);
+  background:
+    linear-gradient(180deg, rgba(36, 38, 34, 0.68), rgba(12, 13, 11, 0.84)),
+    rgba(10, 11, 10, 0.5);
+}
+
+.workspace-header__action--emphasis.btn {
+  background:
+    linear-gradient(180deg, rgba(227, 222, 203, 0.12), rgba(227, 222, 203, 0.06)),
+    rgba(10, 11, 10, 0.34);
+  border-color: rgba(227, 222, 203, 0.24);
+}
+
+.workspace-header__action--emphasis.btn:hover {
+  background:
+    linear-gradient(180deg, rgba(227, 222, 203, 0.18), rgba(227, 222, 203, 0.08)),
+    rgba(10, 11, 10, 0.4);
+}
+
+.workspace-header__action-label {
+  font-size: 0.86rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.workspace-header__action--lock.btn {
+  align-items: center;
+}
+
+@media (max-width: 1080px) {
+  .header.workspace-header {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .workspace-header__right {
+    flex: 1 1 100%;
+    justify-content: space-between;
+  }
+
+  .workspace-header__status {
+    flex: 1 1 auto;
+  }
+}
+
+@media (max-width: 768px) {
+  .header.workspace-header {
+    gap: 0.9rem;
+    padding: 0.9rem 1rem 1rem;
+  }
+
+  .workspace-header__title-row {
+    gap: 0.6rem;
+  }
+
+  .workspace-header__title {
+    font-size: 1.5rem;
+  }
+
+  .workspace-header__title-meta {
+    display: none;
+  }
+
+  .workspace-header__right {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .workspace-header__status {
+    width: 100%;
+  }
+
+  .workspace-header__actions {
+    width: 100%;
+  }
+
+  .workspace-header__action.btn {
+    flex: 1 1 0;
+    align-items: center;
+  }
+}
+
+@media (max-width: 560px) {
+  .workspace-header__left {
+    gap: 0.8rem;
+  }
+
+  .workspace-header__eyebrow {
+    letter-spacing: 0.14em;
+  }
+
+  .workspace-header__title {
+    font-size: 1.28rem;
+  }
+
+  .workspace-header__status {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .workspace-header__status-chip {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .workspace-header__actions {
+    flex-wrap: wrap;
+  }
+
+  .workspace-header__action.btn {
+    min-width: calc(50% - 0.35rem);
+  }
+}
+
+@media (max-width: 420px) {
+  .header.workspace-header {
+    padding-inline: 0.85rem;
+  }
+
+  .workspace-header__menu.btn {
+    width: 46px;
+    height: 46px;
+    border-radius: 16px;
+  }
+
+  .workspace-header__brand {
+    gap: 0.3rem;
+  }
+
+  .workspace-header__eyebrow,
+  .workspace-header__action-kicker {
+    font-size: 0.58rem;
+  }
+
+  .workspace-header__action.btn {
+    min-width: 100%;
+  }
+}
